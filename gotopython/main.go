@@ -16,6 +16,7 @@ var (
 	dumpGoAST     = flag.Bool("g", false, "Dump the Go syntax tree to stdout")
 	dumpPythonAST = flag.Bool("p", false, "Dump the Python syntax tree to stdout")
 	output        = flag.String("o", "", "Write the Python module to this file")
+	httpAddress   = flag.String("http", "", "HTTP service address (e.g. ':8080')")
 )
 
 var (
@@ -31,6 +32,10 @@ func usage() {
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+
+	if *httpAddress != "" {
+		runWebServer(*httpAddress)
+	}
 
 	dir := flag.Arg(0)
 	fset := token.NewFileSet()

@@ -198,7 +198,7 @@ func compileDecl(decl ast.Decl, module *Module) {
 
 }
 
-func CompileFile(file *ast.File, module *Module) {
+func compileFile(file *ast.File, module *Module) {
 	for _, decl := range file.Decls {
 		compileDecl(decl, module)
 	}
@@ -207,7 +207,7 @@ func CompileFile(file *ast.File, module *Module) {
 func CompilePackage(pkg *ast.Package) *py.Module {
 	module := &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
 	for _, file := range pkg.Files {
-		CompileFile(file, module)
+		compileFile(file, module)
 	}
 	pyModule := &py.Module{}
 	for _, class := range module.Classes {
