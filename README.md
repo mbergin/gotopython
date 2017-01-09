@@ -68,14 +68,17 @@ The parts of the Go language spec that are implemented are:
 | ValueSpec  | `var x T`    |             |
 | TypeSpec   | `type T U`   | ✓           |
 
-| Language feature | Implemented |
-|------------------|-------------|
-| `panic`          |             |
-| package unsafe   |             |
-| goroutines       |             |
-| Imports          |             |
-| Name collisions  |             |
-| Scoping rules    |             |
-| `fallthrough`    |             |
-| `goto`           |             |
-| cgo              |             |
+| Language feature     | Implemented |
+|----------------------|-------------|
+| fixed width integers |             |
+| struct copying       |             |
+| pass by value        |             |
+| `panic`              |             |
+| package unsafe       |             |
+| goroutines           |             |
+| Imports              |             |
+| Name collisions      |             |
+| Scoping rules        |             |
+| `fallthrough`        |             |
+| `goto`               |             |
+| cgo                  |             |
