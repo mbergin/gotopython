@@ -45,7 +45,7 @@ The parts of the Go language spec that are implemented are:
 | EmptyStmt      |                             |             |
 | LabeledStmt    | `label: ...`                |             |
 | ExprStmt       | `x`                         | ✓           |
-| SendStmt       |                             |             |
+| SendStmt       | `x <- y`                    |             |
 | IncDecStmt     | `x++`                       | ✓           |
 | AssignStmt     | `x, y := z`                 | ✓           |
 | GoStmt         | `go f()`                    |             |
@@ -57,8 +57,8 @@ The parts of the Go language spec that are implemented are:
 | CaseClause     | `case x>y:`                 | ✓           |
 | SwitchStmt     | `switch x; y {...}`         | partial     |
 | TypeSwitchStmt | `switch x.(type) {...}`     |             | 
-| CommClause     |                             |             |
-| SelectStmt     |                             |             |
+| CommClause     | `case x = <-y: ...`         |             |
+| SelectStmt     | `select { ... }`            |             |
 | ForStmt        | `for x; y; z {...}`         | ✓           |
 | RangeStmt      | `for x, y := range z {...}` | ✓           |
 
