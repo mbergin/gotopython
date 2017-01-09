@@ -65,34 +65,6 @@ func binOp(t token.Token) (py.Operator, bool) {
 	return py.Operator(0), false
 }
 
-func augmentedOp(t token.Token) py.Operator {
-	switch t {
-	case token.ADD_ASSIGN: // +=
-		return py.Add
-	case token.SUB_ASSIGN: // -=
-		return py.Sub
-	case token.MUL_ASSIGN: // *=
-		return py.Mult
-	case token.QUO_ASSIGN: // /=
-		return py.FloorDiv
-	case token.REM_ASSIGN: // %=
-		return py.Mod
-	case token.AND_ASSIGN: // &=
-		return py.BitAnd
-	case token.OR_ASSIGN: // |=
-		return py.BitOr
-	case token.XOR_ASSIGN: // ^=
-		return py.BitXor
-	case token.SHL_ASSIGN: // <<=
-		return py.LShift
-	case token.SHR_ASSIGN: // >>=
-		return py.RShift
-		//case AND_NOT_ASSIGN: // &^=
-	default:
-		panic(fmt.Sprintf("augmentedOp bad token %v", t))
-	}
-}
-
 func boolOp(t token.Token) (py.BoolOp, bool) {
 	switch t {
 	case token.LAND:
@@ -137,7 +109,7 @@ func compileBasicLit(expr *ast.BasicLit) py.Expr {
 	case token.STRING:
 		return &py.Str{S: expr.Value}
 	}
-	panic(fmt.Sprintf("unknown BasicLit: %T", expr))
+	panic(fmt.Sprintf("unknown BasicLit kind: %v", expr.Kind))
 }
 
 func compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
@@ -146,8 +118,12 @@ func compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 		return &py.UnaryOpExpr{Op: py.Not, Operand: compileExpr(expr.X)}
 	case token.AND: // address of
 		return compileExpr(expr.X)
+	case token.ADD:
+		return &py.UnaryOpExpr{Op: py.UAdd, Operand: compileExpr(expr.X)}
 	case token.SUB:
 		return &py.UnaryOpExpr{Op: py.USub, Operand: compileExpr(expr.X)}
+	case token.XOR:
+		return &py.UnaryOpExpr{Op: py.Invert, Operand: compileExpr(expr.X)}
 	}
 	panic(fmt.Sprintf("unknown UnaryExpr: %v", expr.Op))
 }

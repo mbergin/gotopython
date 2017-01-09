@@ -73,11 +73,50 @@ func compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 	return stmts
 }
 
+func augmentedOp(t token.Token) py.Operator {
+	switch t {
+	case token.ADD_ASSIGN: // +=
+		return py.Add
+	case token.SUB_ASSIGN: // -=
+		return py.Sub
+	case token.MUL_ASSIGN: // *=
+		return py.Mult
+	case token.QUO_ASSIGN: // /=
+		return py.FloorDiv
+	case token.REM_ASSIGN: // %=
+		return py.Mod
+	case token.AND_ASSIGN: // &=
+		return py.BitAnd
+	case token.OR_ASSIGN: // |=
+		return py.BitOr
+	case token.XOR_ASSIGN: // ^=
+		return py.BitXor
+	case token.SHL_ASSIGN: // <<=
+		return py.LShift
+	case token.SHR_ASSIGN: // >>=
+		return py.RShift
+		// &^= is special cased in compileAssignStmt
+	default:
+		panic(fmt.Sprintf("augmentedOp bad token %v", t))
+	}
+}
+
 func compileAssignStmt(s *ast.AssignStmt) py.Stmt {
 	if s.Tok == token.ASSIGN || s.Tok == token.DEFINE {
 		return &py.Assign{
 			Targets: compileExprs(s.Lhs),
 			Value:   compileExprsTuple(s.Rhs),
+		}
+	}
+	// x &^= y becomes x &= ~y
+	if s.Tok == token.AND_NOT_ASSIGN {
+		return &py.AugAssign{
+			Target: compileExpr(s.Lhs[0]),
+			Value: &py.UnaryOpExpr{
+				Op:      py.Invert,
+				Operand: compileExpr(s.Rhs[0]),
+			},
+			Op: py.BitAnd,
 		}
 	}
 	return &py.AugAssign{
