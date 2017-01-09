@@ -59,6 +59,22 @@ var funcDeclTests = []struct {
 			},
 		},
 	}}},
+
+	// Return
+	{"func f() { return }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Return{},
+		},
+	}}},
+	// TODO named return values
+	// {"func f() (x int) { return }", FuncDecl{noClass, &py.FunctionDef{
+	// 	Name: f,
+	// 	Body: []py.Stmt{
+	// 		&py.Assign{Targets: []py.Expr{x}, Value: &py.Num{N: "0"}},
+	// 		&py.Return{Value: x},
+	// 	},
+	// }}},
 }
 
 func parseFuncDecl(stmt string) (*ast.FuncDecl, error) {

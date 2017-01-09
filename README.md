@@ -31,7 +31,7 @@ The parts of the Go language spec that are implemented are:
 | UnaryExpr      | `-x`                      | ✓           |
 | BinaryExpr     | `x+y`                     | ✓           |
 | KeyValueExpr   | `x: y`                    | ✓           |
-| ArrayType      | `[]T`                     | partial     |
+| ArrayType      | `[]T`                     | ✓           |
 | StructType     | `struct { T x }`          |             |
 | FuncType       | `func(T) U`               |             |
 | InterfaceType  | `interface {}`            |             |
@@ -50,17 +50,20 @@ The parts of the Go language spec that are implemented are:
 | AssignStmt     | `x, y := z`                 | ✓           |
 | GoStmt         | `go f()`                    |             |
 | DeferStmt      | `defer f()`                 |             |
-| ReturnStmt     | `return x, y`               | ✓           |
+| ReturnStmt     | `return x, y`               | 1           |
 | BranchStmt     | `break`                     | ✓           |
 | BlockStmt      | `{...}`                     | ✓           |
 | IfStmt         | `if x; y {...}`             | ✓           |
 | CaseClause     | `case x>y:`                 | ✓           |
-| SwitchStmt     | `switch x; y {...}`         | partial     |
+| SwitchStmt     | `switch x; y {...}`         | 2           |
 | TypeSwitchStmt | `switch x.(type) {...}`     |             | 
 | CommClause     | `case x = <-y: ...`         |             |
 | SelectStmt     | `select { ... }`            |             |
 | ForStmt        | `for x; y; z {...}`         | ✓           |
 | RangeStmt      | `for x, y := range z {...}` | ✓           |
+
+1. No argumentless return in functions with named return values
+2. No `fallthrough`
 
 | Spec       | Example      | Implemented |
 |------------|--------------|-------------|

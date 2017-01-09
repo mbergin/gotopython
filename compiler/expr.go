@@ -245,8 +245,12 @@ func compileExprs(exprs []ast.Expr) []py.Expr {
 
 func compileExprsTuple(exprs []ast.Expr) py.Expr {
 	pyExprs := compileExprs(exprs)
-	if len(pyExprs) == 1 {
+	switch len(pyExprs) {
+	case 0:
+		return nil
+	case 1:
 		return pyExprs[0]
+	default:
+		return &py.Tuple{Elts: pyExprs}
 	}
-	return &py.Tuple{Elts: pyExprs}
 }
