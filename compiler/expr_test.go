@@ -11,6 +11,7 @@ import (
 // Placeholder expressions used in expr tests
 var x = &py.Name{Id: py.Identifier("x")}
 var y = &py.Name{Id: py.Identifier("y")}
+var z = &py.Name{Id: py.Identifier("z")}
 var T = &py.Name{Id: py.Identifier("T")}
 
 var exprTests = []struct {
@@ -83,6 +84,11 @@ var exprTests = []struct {
 	{`'\U00101234'`, &py.Str{S: `'\U00101234'`}},
 	{`'\''`, &py.Str{S: `'\''`}},
 
+	// Composite literals
+	{"T{}", &py.Call{Func: T}},
+	{"T{x, y}", &py.Call{Func: T, Args: []py.Expr{x, y}}},
+	{"T{x: y}", &py.Call{Func: T, Keywords: []py.Keyword{py.Keyword{Arg: &x.Id, Value: y}}}},
+
 	// Comparison operators
 	{"x==y", &py.Compare{Left: x, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.Eq}}},
 	{"x!=y", &py.Compare{Left: x, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.NotEq}}},
@@ -120,6 +126,21 @@ var exprTests = []struct {
 	{"-x", &py.UnaryOpExpr{Operand: x, Op: py.USub}},
 	{"+x", &py.UnaryOpExpr{Operand: x, Op: py.UAdd}},
 	{"^x", &py.UnaryOpExpr{Operand: x, Op: py.Invert}}, // TODO incorrect for unsigned
+
+	// Selector
+	{"x.y", &py.Attribute{Value: x, Attr: y.Id}},
+
+	// Call
+	{"x()", &py.Call{Func: x}},
+	{"x(y)", &py.Call{Func: x, Args: []py.Expr{y}}},
+	{"x(y,z)", &py.Call{Func: x, Args: []py.Expr{y, z}}},
+	//{"x(y,z...)", &py.Call{Func: x, Args: []py.Expr{y, &py.Starred{Value: z}}}},
+
+	// Index
+	{"x[y]", &py.Subscript{Value: x, Slice: &py.Index{Value: y}}},
+
+	// Slice
+	{"x[y:z]", &py.Subscript{Value: x, Slice: &py.RangeSlice{Lower: y, Upper: z}}},
 
 	// Built-in functions
 	// {"make([]T, x)", &py.ListComp{
