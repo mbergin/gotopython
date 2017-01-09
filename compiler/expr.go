@@ -243,8 +243,7 @@ func compileExprs(exprs []ast.Expr) []py.Expr {
 	return pyExprs
 }
 
-func compileExprsTuple(exprs []ast.Expr) py.Expr {
-	pyExprs := compileExprs(exprs)
+func makeTuple(pyExprs []py.Expr) py.Expr {
 	switch len(pyExprs) {
 	case 0:
 		return nil
@@ -253,4 +252,8 @@ func compileExprsTuple(exprs []ast.Expr) py.Expr {
 	default:
 		return &py.Tuple{Elts: pyExprs}
 	}
+}
+
+func compileExprsTuple(exprs []ast.Expr) py.Expr {
+	return makeTuple(compileExprs(exprs))
 }

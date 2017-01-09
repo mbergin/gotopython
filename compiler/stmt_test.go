@@ -12,11 +12,17 @@ import (
 const f = py.Identifier("f")
 
 // Placeholders for statement blocks
-var s = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("s")}}}
-var t = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("t")}}}
-var u = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("u")}}}
+var (
+	s = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("s")}}}
+	t = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("t")}}}
+	u = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("u")}}}
+)
 
-var one = &py.Num{N: "1"}
+var (
+	zero = &py.Num{N: "0"}
+	one  = &py.Num{N: "1"}
+	two  = &py.Num{N: "2"}
+)
 
 var stmtTests = []struct {
 	golang string
@@ -111,6 +117,42 @@ var stmtTests = []struct {
 			Body:   s,
 		},
 	}},
+
+	// Declaration statements
+	{"var x int", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   zero,
+		},
+	}},
+	{"var x, y int", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x, y},
+			Value: &py.Tuple{
+				Elts: []py.Expr{zero, zero},
+			},
+		},
+	}},
+	{"var x int = 1", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   one,
+		},
+	}},
+	{"var x, y int = 1, 2", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x, y},
+			Value: &py.Tuple{
+				Elts: []py.Expr{one, two},
+			},
+		},
+	}},
+	{"var x, y int = z()", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x, y},
+			Value:   &py.Call{Func: z},
+		},
+	}},
 }
 
 func parseStmt(stmt string) (ast.Stmt, error) {
@@ -140,7 +182,7 @@ func TestStmt(t *testing.T) {
 		}
 		pyStmt := compileStmt(goStmt)
 		if !reflect.DeepEqual(pyStmt, test.python) {
-			t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyStmt))
+			t.Errorf("%q\nwant \n%s got \n%s", test.golang, sp.Sdump(test.python), sp.Sdump(pyStmt))
 		}
 	}
 }
