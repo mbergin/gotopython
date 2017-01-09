@@ -68,12 +68,31 @@ The parts of the Go language spec that are implemented are:
 | ValueSpec  | `var x T`    |             |
 | TypeSpec   | `type T U`   | ✓           |
 
+| Built-in function | Implemented |
+|-------------------| ------------|
+| `close`           |             |
+| `len`             |             |
+| `cap`             |             |
+| `new`             |             |
+| `make([]T)`       | ✓           |
+| `make(map[T]U)`   |             |
+| `make(chan T)`    |             |
+| `append`          |             |
+| `copy`            |             |
+| `delete`          |             |
+| `complex`         |             |
+| `real`            |             |
+| `imag`            |             |
+| `panic`           |             |
+| `recover`         |             |
+| `print`           |             |
+| `println`         |             |
+
 | Language feature     | Implemented |
 |----------------------|-------------|
 | fixed width integers |             |
 | struct copying       |             |
 | pass by value        |             |
-| `panic`              |             |
 | package unsafe       |             |
 | goroutines           |             |
 | Imports              |             |
