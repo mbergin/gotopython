@@ -141,6 +141,9 @@ var exprTests = []struct {
 
 	// Slice
 	{"x[y:z]", &py.Subscript{Value: x, Slice: &py.RangeSlice{Lower: y, Upper: z}}},
+	{"x[y:]", &py.Subscript{Value: x, Slice: &py.RangeSlice{Lower: y}}},
+	{"x[:z]", &py.Subscript{Value: x, Slice: &py.RangeSlice{Upper: z}}},
+	{"x[:]", &py.Subscript{Value: x, Slice: &py.RangeSlice{}}},
 
 	// Built-in functions
 	// {"make([]T, x)", &py.ListComp{

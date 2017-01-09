@@ -201,6 +201,9 @@ func compileIndexExpr(expr *ast.IndexExpr) py.Expr {
 }
 
 func compileExpr(expr ast.Expr) py.Expr {
+	if expr == nil {
+		return nil
+	}
 	switch e := expr.(type) {
 	case *ast.UnaryExpr:
 		return compileUnaryExpr(e)
