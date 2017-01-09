@@ -163,6 +163,36 @@ var stmtTests = []struct {
 			Value:   zero,
 		},
 	}},
+	{"var x *int", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   pyNone,
+		},
+	}},
+	{"var x string", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   pyEmptyString,
+		},
+	}},
+	{"var x bool", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   pyFalse,
+		},
+	}},
+	{"var x T", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   &py.Call{Func: T},
+		},
+	}},
+	{"var x []T", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   &py.List{},
+		},
+	}},
 	{"var x, y int", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x, y},

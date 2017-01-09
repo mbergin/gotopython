@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	pyTrue  = &py.NameConstant{Value: py.True}
-	pyFalse = &py.NameConstant{Value: py.False}
-	pyNone  = &py.NameConstant{Value: py.None}
+	pyTrue        = &py.NameConstant{Value: py.True}
+	pyFalse       = &py.NameConstant{Value: py.False}
+	pyNone        = &py.NameConstant{Value: py.None}
+	pyEmptyString = &py.Str{S: `""`}
 )
 
 func compileIdent(ident *ast.Ident) py.Expr {
