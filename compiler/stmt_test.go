@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"bytes"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
 	"go/parser"
@@ -10,6 +11,9 @@ import (
 )
 
 const f = py.Identifier("f")
+
+// Name of temp variable used to store evaluated switch tag
+var tag = &py.Name{Id: py.Identifier("tag")}
 
 // Placeholders for statement blocks
 var (
@@ -166,6 +170,62 @@ var stmtTests = []struct {
 			Value:   &py.Call{Func: z},
 		},
 	}},
+
+	// Switch statements
+	{"switch {}", nil},
+	{"switch x {}", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   x,
+		},
+	}},
+	{"switch s; x { case y: t }", []py.Stmt{
+		s[0],
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   x,
+		},
+		&py.If{
+			Test: &py.Compare{Left: tag, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.Eq}},
+			Body: t,
+		},
+	}},
+	{"switch x { case y, z: s; default: u; case w: t }", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   x,
+		},
+		&py.If{
+			Test: &py.BoolOpExpr{
+				Op: py.Or,
+				Values: []py.Expr{
+					&py.Compare{Left: tag, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.Eq}},
+					&py.Compare{Left: tag, Comparators: []py.Expr{z}, Ops: []py.CmpOp{py.Eq}},
+				},
+			},
+			Body: s,
+			Orelse: []py.Stmt{
+				&py.If{
+					Test:   &py.Compare{Left: tag, Comparators: []py.Expr{w}, Ops: []py.CmpOp{py.Eq}},
+					Body:   t,
+					Orelse: u,
+				},
+			},
+		},
+	}},
+	{"switch { default: u; case x>0: s; case y<0: t }", []py.Stmt{
+		&py.If{
+			Test: &py.Compare{Left: x, Comparators: []py.Expr{zero}, Ops: []py.CmpOp{py.Gt}},
+			Body: s,
+			Orelse: []py.Stmt{
+				&py.If{
+					Test:   &py.Compare{Left: y, Comparators: []py.Expr{zero}, Ops: []py.CmpOp{py.Lt}},
+					Body:   t,
+					Orelse: u,
+				},
+			},
+		},
+	}},
 }
 
 func parseStmt(stmt string) (ast.Stmt, error) {
@@ -185,6 +245,13 @@ func parseStmt(stmt string) (ast.Stmt, error) {
 	return pkg.Files["file.go"].Decls[0].(*ast.FuncDecl).Body.List[0], nil
 }
 
+func pythonCode(stmts []py.Stmt) string {
+	var buf bytes.Buffer
+	writer := py.NewWriter(&buf)
+	writer.WriteModule(&py.Module{Body: stmts})
+	return buf.String()
+}
+
 func TestStmt(t *testing.T) {
 
 	for _, test := range stmtTests {
@@ -195,7 +262,7 @@ func TestStmt(t *testing.T) {
 		}
 		pyStmt := compileStmt(goStmt)
 		if !reflect.DeepEqual(pyStmt, test.python) {
-			t.Errorf("%q\nwant \n%s got \n%s", test.golang, sp.Sdump(test.python), sp.Sdump(pyStmt))
+			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmt))
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 )
 
 // Placeholder expressions used in expr tests
+var w = &py.Name{Id: py.Identifier("w")}
 var x = &py.Name{Id: py.Identifier("x")}
 var y = &py.Name{Id: py.Identifier("y")}
 var z = &py.Name{Id: py.Identifier("z")}
