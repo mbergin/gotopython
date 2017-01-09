@@ -60,10 +60,11 @@ The parts of the Go language spec that are implemented are:
 | CommClause     | `case x = <-y: ...`         |             |
 | SelectStmt     | `select { ... }`            |             |
 | ForStmt        | `for x; y; z {...}`         | ✓           |
-| RangeStmt      | `for x, y := range z {...}` | ✓           |
+| RangeStmt      | `for x, y := range z {...}` | 3           |
 
 1. No argumentless return in functions with named return values
 2. No `fallthrough`
+3. Only for array/slice
 
 | Spec       | Example      | Implemented |
 |------------|--------------|-------------|
