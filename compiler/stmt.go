@@ -204,26 +204,33 @@ func compileBranchStmt(s *ast.BranchStmt) py.Stmt {
 	}
 }
 
+func compileForStmt(s *ast.ForStmt) []py.Stmt {
+	var stmts []py.Stmt
+	body := compileStmt(s.Body)
+	if s.Post != nil {
+		body = append(compileStmt(s.Body), compileStmt(s.Post)...)
+	}
+	if s.Init != nil {
+		stmts = compileStmt(s.Init)
+	}
+	var test py.Expr = pyTrue
+	if s.Cond != nil {
+		test = compileExpr(s.Cond)
+	}
+	stmts = append(stmts, &py.While{Test: test, Body: body})
+	return stmts
+}
+
 func compileStmt(stmt ast.Stmt) []py.Stmt {
 	switch s := stmt.(type) {
 	case *ast.ReturnStmt:
 		return []py.Stmt{&py.Return{Value: compileExprsTuple(s.Results)}}
 	case *ast.ForStmt:
-		var stmts []py.Stmt
-		body := compileStmt(s.Body)
-		if s.Post != nil {
-			body = append(compileStmt(s.Body), compileStmt(s.Post)...)
-		}
-		if s.Init != nil {
-			stmts = compileStmt(s.Init)
-		}
-		stmts = append(stmts, &py.While{Test: compileExpr(s.Cond), Body: body})
-		return stmts
+		return compileForStmt(s)
 	case *ast.BlockStmt:
 		return compileStmts(s.List)
 	case *ast.AssignStmt:
 		return []py.Stmt{compileAssignStmt(s)}
-
 	case *ast.ExprStmt:
 		return []py.Stmt{&py.ExprStmt{Value: compileExpr(s.X)}}
 	case *ast.RangeStmt:

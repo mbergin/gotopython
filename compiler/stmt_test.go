@@ -135,6 +135,27 @@ var stmtTests = []struct {
 		},
 	}},
 
+	// For statement
+	{"for {s}", []py.Stmt{
+		&py.While{
+			Test: pyTrue,
+			Body: s,
+		},
+	}},
+	{"for x {s}", []py.Stmt{
+		&py.While{
+			Test: x,
+			Body: s,
+		},
+	}},
+	{"for s; y; t {u}",
+		append(s,
+			&py.While{
+				Test: y,
+				Body: append(u, t...),
+			}),
+	},
+
 	// Var declaration statements
 	{"var x int", []py.Stmt{
 		&py.Assign{
