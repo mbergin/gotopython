@@ -21,6 +21,11 @@ var (
 	pyEnumerate = &py.Name{Id: py.Identifier("enumerate")}
 )
 
+func isBlank(expr ast.Expr) bool {
+	ident, ok := expr.(*ast.Ident)
+	return ok && ident.Name == "_"
+}
+
 func compileRangeStmt(stmt *ast.RangeStmt) py.Stmt {
 	if stmt.Key != nil && stmt.Value == nil {
 		return &py.For{
@@ -37,6 +42,13 @@ func compileRangeStmt(stmt *ast.RangeStmt) py.Stmt {
 		}
 	}
 	if stmt.Key != nil && stmt.Value != nil {
+		if isBlank(stmt.Key) {
+			return &py.For{
+				Target: compileExpr(stmt.Value),
+				Iter:   compileExpr(stmt.X),
+				Body:   compileStmt(stmt.Body),
+			}
+		}
 		return &py.For{
 			Target: &py.Tuple{Elts: []py.Expr{compileExpr(stmt.Key), compileExpr(stmt.Value)}},
 			Iter: &py.Call{

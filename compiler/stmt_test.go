@@ -77,6 +77,40 @@ var stmtTests = []struct {
 		Body:   s,
 		Orelse: append(t, &py.If{Test: y, Body: u}),
 	}}},
+
+	// Range for
+	{"for x := range y {s}", []py.Stmt{
+		// for x in range(len(y)): s
+		&py.For{
+			Target: x,
+			Iter: &py.Call{
+				Func: pyRange,
+				Args: []py.Expr{&py.Call{Func: pyLen, Args: []py.Expr{y}}},
+			},
+			Body: s,
+		},
+	}},
+	{"for x, y := range z {s}", []py.Stmt{
+		// for x, y in enumerate(z): s
+		&py.For{
+			Target: &py.Tuple{
+				Elts: []py.Expr{x, y},
+			},
+			Iter: &py.Call{
+				Func: pyEnumerate,
+				Args: []py.Expr{z},
+			},
+			Body: s,
+		},
+	}},
+	{"for _, x := range y {s}", []py.Stmt{
+		// for x in y: s
+		&py.For{
+			Target: x,
+			Iter:   y,
+			Body:   s,
+		},
+	}},
 }
 
 func parseStmt(stmt string) (ast.Stmt, error) {
