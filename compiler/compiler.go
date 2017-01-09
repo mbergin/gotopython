@@ -6,6 +6,8 @@ import (
 	"go/ast"
 )
 
+var pySelf = py.Identifier("self")
+
 type Module struct {
 	Imports   []py.Stmt
 	Classes   []*py.ClassDef
@@ -65,12 +67,15 @@ func compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	var recvType py.Identifier
 	pyArgs := py.Arguments{}
 	if decl.Recv != nil {
-		if len(decl.Recv.List) != 1 || len(decl.Recv.List[0].Names) != 1 {
+		if len(decl.Recv.List) > 1 || len(decl.Recv.List[0].Names) > 1 {
 			panic("multiple receivers")
 		}
 		field := decl.Recv.List[0]
-		name := field.Names[0]
-		pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: identifier(name)})
+		name := pySelf
+		if len(field.Names) == 1 {
+			name = identifier(field.Names[0])
+		}
+		pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: name})
 		recvType = fieldType(field)
 	}
 	for _, param := range decl.Type.Params.List {
@@ -115,8 +120,7 @@ func nilValue(typ ast.Expr) py.Expr {
 }
 
 func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
-	self := py.Identifier("self")
-	args := []py.Arg{py.Arg{Arg: self}}
+	args := []py.Arg{py.Arg{Arg: pySelf}}
 	var defaults []py.Expr
 	for _, field := range typ.Fields.List {
 		for _, name := range field.Names {
@@ -132,7 +136,7 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 			assign := &py.Assign{
 				Targets: []py.Expr{
 					&py.Attribute{
-						Value: &py.Name{Id: self},
+						Value: &py.Name{Id: pySelf},
 						Attr:  identifier(name),
 					},
 				},

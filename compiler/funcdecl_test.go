@@ -17,6 +17,48 @@ var funcDeclTests = []struct {
 }{
 	// Function decl
 	{"func f() {}", FuncDecl{noClass, &py.FunctionDef{Name: f, Body: []py.Stmt{&py.Pass{}}}}},
+	{"func f() {s}", FuncDecl{noClass, &py.FunctionDef{Name: f, Body: s}}},
+	{"func f(x T) {s}", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: s,
+		Args: py.Arguments{
+			Args: []py.Arg{py.Arg{Arg: x.Id}},
+		},
+	}}},
+	{"func f(x T) U {s}", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: s,
+		Args: py.Arguments{
+			Args: []py.Arg{py.Arg{Arg: x.Id}},
+		},
+	}}},
+	{"func (x T) f() {s}", FuncDecl{T.Id, &py.FunctionDef{
+		Name: f,
+		Body: s,
+		Args: py.Arguments{
+			Args: []py.Arg{
+				py.Arg{Arg: x.Id},
+			},
+		},
+	}}},
+	{"func (x *T) f() {s}", FuncDecl{T.Id, &py.FunctionDef{
+		Name: f,
+		Body: s,
+		Args: py.Arguments{
+			Args: []py.Arg{
+				py.Arg{Arg: x.Id},
+			},
+		},
+	}}},
+	{"func (T) f() {s}", FuncDecl{T.Id, &py.FunctionDef{
+		Name: f,
+		Body: s,
+		Args: py.Arguments{
+			Args: []py.Arg{
+				py.Arg{Arg: pySelf},
+			},
+		},
+	}}},
 }
 
 func parseFuncDecl(stmt string) (*ast.FuncDecl, error) {
