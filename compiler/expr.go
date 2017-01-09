@@ -7,14 +7,20 @@ import (
 	"go/token"
 )
 
+var (
+	pyTrue  = &py.NameConstant{Value: py.True}
+	pyFalse = &py.NameConstant{Value: py.False}
+	pyNone  = &py.NameConstant{Value: py.None}
+)
+
 func compileIdent(ident *ast.Ident) py.Expr {
 	switch ident.Name {
 	case "true":
-		return &py.NameConstant{Value: py.True}
+		return pyTrue
 	case "false":
-		return &py.NameConstant{Value: py.False}
+		return pyFalse
 	case "nil":
-		return &py.NameConstant{Value: py.None}
+		return pyNone
 	default:
 		return &py.Name{Id: py.Identifier(ident.Name)}
 	}
