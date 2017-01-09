@@ -65,6 +65,19 @@ var stmtTests = []struct {
 		Value:   &py.Tuple{Elts: []py.Expr{y, x}},
 	}}},
 
+	// Augmented assignments
+	{"x +=  y", []py.Stmt{&py.AugAssign{Op: py.Add, Target: x, Value: y}}},
+	{"x -=  y", []py.Stmt{&py.AugAssign{Op: py.Sub, Target: x, Value: y}}},
+	{"x |=  y", []py.Stmt{&py.AugAssign{Op: py.BitOr, Target: x, Value: y}}},
+	{"x ^=  y", []py.Stmt{&py.AugAssign{Op: py.BitXor, Target: x, Value: y}}},
+	{"x *=  y", []py.Stmt{&py.AugAssign{Op: py.Mult, Target: x, Value: y}}},
+	{"x /=  y", []py.Stmt{&py.AugAssign{Op: py.FloorDiv, Target: x, Value: y}}}, // TODO py.Div for floats
+	{"x %=  y", []py.Stmt{&py.AugAssign{Op: py.Mod, Target: x, Value: y}}},
+	{"x <<= y", []py.Stmt{&py.AugAssign{Op: py.LShift, Target: x, Value: y}}},
+	{"x >>= y", []py.Stmt{&py.AugAssign{Op: py.RShift, Target: x, Value: y}}},
+	{"x &=  y", []py.Stmt{&py.AugAssign{Op: py.BitAnd, Target: x, Value: y}}},
+	{"x &^= y", []py.Stmt{&py.AugAssign{Op: py.BitAnd, Target: x, Value: &py.UnaryOpExpr{Op: py.Invert, Operand: y}}}},
+
 	// Branch statements
 	{"break", []py.Stmt{&py.Break{}}},
 	{"continue", []py.Stmt{&py.Continue{}}},
@@ -118,7 +131,7 @@ var stmtTests = []struct {
 		},
 	}},
 
-	// Declaration statements
+	// Var declaration statements
 	{"var x int", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
