@@ -13,6 +13,10 @@ type Module struct {
 	Methods   map[py.Identifier][]*py.FunctionDef
 }
 
+func newModule() *Module {
+	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
+}
+
 func identifier(ident *ast.Ident) py.Identifier {
 	return py.Identifier(ident.Name)
 }
@@ -52,7 +56,12 @@ func fieldType(field *ast.Field) py.Identifier {
 	return identifier(ident)
 }
 
-func compileFuncDecl(decl *ast.FuncDecl) (py.Identifier, *py.FunctionDef) {
+type FuncDecl struct {
+	Class py.Identifier // "" if free function
+	Def   *py.FunctionDef
+}
+
+func compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	var recvType py.Identifier
 	pyArgs := py.Arguments{}
 	if decl.Recv != nil {
@@ -76,7 +85,9 @@ func compileFuncDecl(decl *ast.FuncDecl) (py.Identifier, *py.FunctionDef) {
 	if len(pyBody) == 0 {
 		pyBody = []py.Stmt{&py.Pass{}}
 	}
-	return recvType, &py.FunctionDef{Name: identifier(decl.Name), Args: pyArgs, Body: pyBody}
+	return FuncDecl{
+		Class: recvType,
+		Def:   &py.FunctionDef{Name: identifier(decl.Name), Args: pyArgs, Body: pyBody}}
 }
 
 func nilValue(typ ast.Expr) py.Expr {
@@ -184,11 +195,11 @@ func compileGenDecl(decl *ast.GenDecl, module *Module) {
 func compileDecl(decl ast.Decl, module *Module) {
 	switch d := decl.(type) {
 	case *ast.FuncDecl:
-		typ, fun := compileFuncDecl(d)
-		if typ != py.Identifier("") {
-			module.Methods[typ] = append(module.Methods[typ], fun)
+		funcDecl := compileFuncDecl(d)
+		if funcDecl.Class != py.Identifier("") {
+			module.Methods[funcDecl.Class] = append(module.Methods[funcDecl.Class], funcDecl.Def)
 		} else {
-			module.Functions = append(module.Functions, fun)
+			module.Functions = append(module.Functions, funcDecl.Def)
 		}
 	case *ast.GenDecl:
 		compileGenDecl(d, module)
