@@ -11,6 +11,7 @@ import (
 // Placeholder expressions used in expr tests
 var x = &py.Name{Id: py.Identifier("x")}
 var y = &py.Name{Id: py.Identifier("y")}
+var T = &py.Name{Id: py.Identifier("T")}
 
 var exprTests = []struct {
 	golang string
@@ -119,6 +120,17 @@ var exprTests = []struct {
 	{"-x", &py.UnaryOpExpr{Operand: x, Op: py.USub}},
 	{"+x", &py.UnaryOpExpr{Operand: x, Op: py.UAdd}},
 	{"^x", &py.UnaryOpExpr{Operand: x, Op: py.Invert}}, // TODO incorrect for unsigned
+
+	// Built-in functions
+	// {"make([]T, x)", &py.ListComp{
+	// 	Elt: &py.Call{Func: T},
+	// 	Generators: []py.Comprehension{
+	// 		py.Comprehension{
+	// 			Target: &py.Name{Id: py.Identifier("_")},
+	// 			Iter: &py.Call{
+	// 				Func: &py.Name{Id: py.Identifier("range")},
+	// 				Args: []py.Expr{x}},
+	// 		}}}},
 }
 
 var sp = spew.NewDefaultConfig()
@@ -137,8 +149,7 @@ func TestExpr(t *testing.T) {
 		}
 		pyExpr := compileExpr(goExpr)
 		if !reflect.DeepEqual(pyExpr, test.python) {
-			t.Errorf("\nwant %#v\n got %#v", test.python, pyExpr)
-			//t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyExpr))
+			t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyExpr))
 		}
 	}
 }
