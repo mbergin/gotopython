@@ -35,7 +35,7 @@ The parts of the Go language spec that are implemented are:
 | StructType     | `struct { T x }`          |             |
 | FuncType       | `func(T) U`               |             |
 | InterfaceType  | `interface {}`            |             |
-| MapType        | `map[T]U`                 |             |
+| MapType        | `map[T]U`                 | ✓           |
 | ChanType       | `chan<- T`                |             |
 
 | Statement      | Example                     | Implemented |
@@ -79,7 +79,7 @@ The parts of the Go language spec that are implemented are:
 | `cap`             |             |
 | `new`             |             |
 | `make([]T)`       | ✓           |
-| `make(map[T]U)`   |             |
+| `make(map[T]U)`   | ✓           |
 | `make(chan T)`    |             |
 | `append`          |             |
 | `copy`            |             |
