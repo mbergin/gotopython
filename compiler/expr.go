@@ -194,6 +194,8 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 						},
 					},
 				}
+			case *ast.MapType:
+				return &py.Dict{}
 			default:
 				panic("bad type in make()")
 			}

@@ -153,7 +153,7 @@ var exprTests = []struct {
 			py.Comprehension{
 				Target: &py.Name{Id: py.Identifier("_")},
 				Iter: &py.Call{
-					Func: &py.Name{Id: py.Identifier("range")},
+					Func: pyRange,
 					Args: []py.Expr{x}},
 			}}}},
 	{"make([]T, x, y)", &py.ListComp{
@@ -162,9 +162,10 @@ var exprTests = []struct {
 			py.Comprehension{
 				Target: &py.Name{Id: py.Identifier("_")},
 				Iter: &py.Call{
-					Func: &py.Name{Id: py.Identifier("range")},
+					Func: pyRange,
 					Args: []py.Expr{x}},
 			}}}},
+	{"make(map[T]U)", &py.Dict{}},
 }
 
 var sp = spew.NewDefaultConfig()
