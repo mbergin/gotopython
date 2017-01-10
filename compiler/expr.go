@@ -135,8 +135,15 @@ func compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 	panic(fmt.Sprintf("unknown UnaryExpr: %v", expr.Op))
 }
 
-func compileCompositeLit(expr *ast.CompositeLit) py.Expr {
-	switch typ := expr.Type.(type) {
+func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
+	var clType ast.Expr
+	// Allowed to omit the type if this is an element of another composite literal
+	if expr.Type == nil {
+		clType = parentElementType
+	} else {
+		clType = expr.Type
+	}
+	switch typ := clType.(type) {
 	case *ast.Ident:
 		var args []py.Expr
 		var keywords []py.Keyword
@@ -165,7 +172,11 @@ func compileCompositeLit(expr *ast.CompositeLit) py.Expr {
 	case *ast.ArrayType:
 		elts := make([]py.Expr, len(expr.Elts))
 		for i, elt := range expr.Elts {
-			elts[i] = compileExpr(elt)
+			if cl, ok := elt.(*ast.CompositeLit); ok {
+				elts[i] = compileCompositeLit(cl, typ.Elt)
+			} else {
+				elts[i] = compileExpr(elt)
+			}
 		}
 		return &py.List{Elts: elts}
 	case *ast.MapType:
@@ -173,8 +184,16 @@ func compileCompositeLit(expr *ast.CompositeLit) py.Expr {
 		values := make([]py.Expr, len(expr.Elts))
 		for i, elt := range expr.Elts {
 			kv := elt.(*ast.KeyValueExpr)
-			keys[i] = compileExpr(kv.Key)
-			values[i] = compileExpr(kv.Value)
+			if clKey, ok := kv.Key.(*ast.CompositeLit); ok {
+				keys[i] = compileCompositeLit(clKey, typ.Key)
+			} else {
+				keys[i] = compileExpr(kv.Key)
+			}
+			if clValue, ok := kv.Value.(*ast.CompositeLit); ok {
+				values[i] = compileCompositeLit(clValue, typ.Value)
+			} else {
+				values[i] = compileExpr(kv.Value)
+			}
 		}
 		return &py.Dict{Keys: keys, Values: values}
 	default:
@@ -264,7 +283,7 @@ func compileExpr(expr ast.Expr) py.Expr {
 	case *ast.ParenExpr:
 		return compileExpr(e.X)
 	case *ast.CompositeLit:
-		return compileCompositeLit(e)
+		return compileCompositeLit(e, nil)
 	case *ast.SelectorExpr:
 		return compileSelectorExpr(e)
 	case *ast.CallExpr:
