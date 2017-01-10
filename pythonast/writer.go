@@ -220,9 +220,13 @@ func (w *Writer) slice(s Slice) {
 	case *Index:
 		w.writeExpr(s.Value)
 	case *RangeSlice:
-		w.writeExpr(s.Lower)
+		if s.Lower != nil {
+			w.writeExpr(s.Lower)
+		}
 		w.write(":")
-		w.writeExpr(s.Upper)
+		if s.Upper != nil {
+			w.writeExpr(s.Upper)
+		}
 	default:
 		panic(fmt.Sprintf("unknown Slice: %T", s))
 	}
