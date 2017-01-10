@@ -23,28 +23,6 @@ func identifier(ident *ast.Ident) py.Identifier {
 	return py.Identifier(ident.Name)
 }
 
-func compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
-	var tests []py.Expr
-	for _, expr := range caseClause.List {
-		var test py.Expr
-		if tag != nil {
-			test = &py.Compare{
-				Left:        tag,
-				Ops:         []py.CmpOp{py.Eq},
-				Comparators: []py.Expr{compileExpr(expr)}}
-		} else {
-			test = compileExpr(expr)
-		}
-		tests = append(tests, test)
-	}
-	if len(tests) == 0 {
-		return nil
-	} else if len(tests) == 1 {
-		return tests[0]
-	}
-	return &py.BoolOpExpr{Op: py.Or, Values: tests}
-}
-
 func fieldType(field *ast.Field) py.Identifier {
 	var ident *ast.Ident
 	switch e := field.Type.(type) {
