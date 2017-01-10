@@ -147,15 +147,24 @@ var exprTests = []struct {
 	{"x[:]", &py.Subscript{Value: x, Slice: &py.RangeSlice{}}},
 
 	// Built-in functions
-	// {"make([]T, x)", &py.ListComp{
-	// 	Elt: &py.Call{Func: T},
-	// 	Generators: []py.Comprehension{
-	// 		py.Comprehension{
-	// 			Target: &py.Name{Id: py.Identifier("_")},
-	// 			Iter: &py.Call{
-	// 				Func: &py.Name{Id: py.Identifier("range")},
-	// 				Args: []py.Expr{x}},
-	// 		}}}},
+	{"make([]T, x)", &py.ListComp{
+		Elt: &py.Call{Func: T},
+		Generators: []py.Comprehension{
+			py.Comprehension{
+				Target: &py.Name{Id: py.Identifier("_")},
+				Iter: &py.Call{
+					Func: &py.Name{Id: py.Identifier("range")},
+					Args: []py.Expr{x}},
+			}}}},
+	{"make([]T, x, y)", &py.ListComp{
+		Elt: &py.Call{Func: T},
+		Generators: []py.Comprehension{
+			py.Comprehension{
+				Target: &py.Name{Id: py.Identifier("_")},
+				Iter: &py.Call{
+					Func: &py.Name{Id: py.Identifier("range")},
+					Args: []py.Expr{x}},
+			}}}},
 }
 
 var sp = spew.NewDefaultConfig()

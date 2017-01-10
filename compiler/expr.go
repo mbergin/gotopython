@@ -179,10 +179,20 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 			switch t := typ.(type) {
 			case *ast.ArrayType:
 				length := expr.Args[1]
-				return &py.BinOp{
-					Left:  &py.List{Elts: []py.Expr{nilValue(t.Elt)}},
-					Op:    py.Mult,
-					Right: compileExpr(length),
+				// This is a list comprehension rather than [<nil value>] * length
+				// because in the case when T is not a primitive type,
+				// every element in the list needs to be a different object.
+				return &py.ListComp{
+					Elt: nilValue(t.Elt),
+					Generators: []py.Comprehension{
+						py.Comprehension{
+							Target: &py.Name{Id: py.Identifier("_")},
+							Iter: &py.Call{
+								Func: pyRange,
+								Args: []py.Expr{compileExpr(length)},
+							},
+						},
+					},
 				}
 			default:
 				panic("bad type in make()")
