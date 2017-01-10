@@ -22,6 +22,7 @@ var (
 var (
 	errInput  = 1
 	errOutput = 2
+	errNoDir  = 3
 )
 
 func usage() {
@@ -35,6 +36,11 @@ func main() {
 
 	if *httpAddress != "" {
 		runWebServer(*httpAddress)
+	}
+
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(errNoDir)
 	}
 
 	dir := flag.Arg(0)
