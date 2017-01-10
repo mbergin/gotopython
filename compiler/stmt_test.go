@@ -20,6 +20,7 @@ var (
 	s = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("s")}}}
 	t = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("t")}}}
 	u = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("u")}}}
+	v = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("v")}}}
 )
 
 var (
@@ -293,6 +294,44 @@ var stmtTests = []struct {
 					Test:   &py.Compare{Left: y, Comparators: []py.Expr{zero}, Ops: []py.CmpOp{py.Lt}},
 					Body:   t,
 					Orelse: u,
+				},
+			},
+		},
+	}},
+
+	// Type switch
+	{"switch s; x.(type) { default: t; case T: u; case U: v}", []py.Stmt{
+		s[0],
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{x}},
+		},
+		&py.If{
+			Test: &py.Compare{Left: tag, Comparators: []py.Expr{T}, Ops: []py.CmpOp{py.Eq}},
+			Body: u,
+			Orelse: []py.Stmt{
+				&py.If{
+					Test:   &py.Compare{Left: tag, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
+					Body:   v,
+					Orelse: t,
+				},
+			},
+		},
+	}},
+	{"switch s; y := x.(type) { default: t; case T: u; case U: v}", []py.Stmt{
+		s[0],
+		&py.Assign{
+			Targets: []py.Expr{y},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{x}},
+		},
+		&py.If{
+			Test: &py.Compare{Left: y, Comparators: []py.Expr{T}, Ops: []py.CmpOp{py.Eq}},
+			Body: u,
+			Orelse: []py.Stmt{
+				&py.If{
+					Test:   &py.Compare{Left: y, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
+					Body:   v,
+					Orelse: t,
 				},
 			},
 		},

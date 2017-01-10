@@ -56,7 +56,7 @@ The parts of the Go language spec that are implemented are:
 | IfStmt         | `if x; y {...}`             | ✓           |
 | CaseClause     | `case x>y:`                 | ✓           |
 | SwitchStmt     | `switch x; y {...}`         | 2           |
-| TypeSwitchStmt | `switch x.(type) {...}`     |             | 
+| TypeSwitchStmt | `switch x.(type) {...}`     | ✓           | 
 | CommClause     | `case x = <-y: ...`         |             |
 | SelectStmt     | `select { ... }`            |             |
 | ForStmt        | `for x; y; z {...}`         | ✓           |

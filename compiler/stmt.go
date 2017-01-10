@@ -19,6 +19,7 @@ var (
 	pyRange     = &py.Name{Id: py.Identifier("range")}
 	pyLen       = &py.Name{Id: py.Identifier("len")}
 	pyEnumerate = &py.Name{Id: py.Identifier("enumerate")}
+	pyType      = &py.Name{Id: py.Identifier("type")}
 )
 
 func isBlank(expr ast.Expr) bool {
@@ -180,6 +181,59 @@ func compileSwitchStmt(s *ast.SwitchStmt) []py.Stmt {
 	return stmts
 }
 
+func compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
+	var stmts []py.Stmt
+
+	if s.Init != nil {
+		stmts = append(stmts, compileStmt(s.Init)...)
+	}
+	var tag py.Expr
+	var typeAssert ast.Expr
+	switch s := s.Assign.(type) {
+	case *ast.AssignStmt:
+		tag = compileExpr(s.Lhs[0])
+		typeAssert = s.Rhs[0]
+	case *ast.ExprStmt:
+		tag = &py.Name{Id: py.Identifier("tag")}
+		typeAssert = s.X
+	default:
+		panic(fmt.Sprintf("Unknown statement type in type switch assign: %T", s))
+	}
+	expr := typeAssert.(*ast.TypeAssertExpr).X
+	tagValue := &py.Call{Func: pyType, Args: []py.Expr{compileExpr(expr)}}
+	assignTag := &py.Assign{Targets: []py.Expr{tag}, Value: tagValue}
+	stmts = append(stmts, assignTag)
+
+	var firstIfStmt *py.If
+	var lastIfStmt *py.If
+	var defaultBody []py.Stmt
+	for _, stmt := range s.Body.List {
+		caseClause := stmt.(*ast.CaseClause)
+		test := compileCaseClauseTest(caseClause, tag)
+		if test == nil {
+			// no test => default clause
+			defaultBody = compileStmts(caseClause.Body)
+			continue
+		}
+		ifStmt := &py.If{Test: test, Body: compileStmts(caseClause.Body)}
+		if firstIfStmt == nil {
+			firstIfStmt = ifStmt
+			lastIfStmt = ifStmt
+		} else {
+			lastIfStmt.Orelse = []py.Stmt{ifStmt}
+			lastIfStmt = ifStmt
+		}
+	}
+	if lastIfStmt != nil {
+		lastIfStmt.Orelse = defaultBody
+		stmts = append(stmts, firstIfStmt)
+	} else {
+		// no cases apart from default
+		stmts = append(stmts, defaultBody...)
+	}
+	return stmts
+}
+
 func compileIfStmt(s *ast.IfStmt) []py.Stmt {
 	var stmts []py.Stmt
 	if s.Init != nil {
@@ -243,6 +297,8 @@ func compileStmt(stmt ast.Stmt) []py.Stmt {
 		return compileDeclStmt(s)
 	case *ast.SwitchStmt:
 		return compileSwitchStmt(s)
+	case *ast.TypeSwitchStmt:
+		return compileTypeSwitchStmt(s)
 	case *ast.BranchStmt:
 		return []py.Stmt{compileBranchStmt(s)}
 	}

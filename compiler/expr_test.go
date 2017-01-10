@@ -9,11 +9,15 @@ import (
 )
 
 // Placeholder expressions used in expr tests
-var w = &py.Name{Id: py.Identifier("w")}
-var x = &py.Name{Id: py.Identifier("x")}
-var y = &py.Name{Id: py.Identifier("y")}
-var z = &py.Name{Id: py.Identifier("z")}
-var T = &py.Name{Id: py.Identifier("T")}
+var (
+	w = &py.Name{Id: py.Identifier("w")}
+	x = &py.Name{Id: py.Identifier("x")}
+	y = &py.Name{Id: py.Identifier("y")}
+	z = &py.Name{Id: py.Identifier("z")}
+	// Type expressions
+	T = &py.Name{Id: py.Identifier("T")}
+	U = &py.Name{Id: py.Identifier("U")}
+)
 
 var exprTests = []struct {
 	golang string
