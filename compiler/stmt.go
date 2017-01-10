@@ -115,8 +115,16 @@ func compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 	var stmts []py.Stmt
 	genDecl := s.Decl.(*ast.GenDecl)
 	for _, spec := range genDecl.Specs {
-		valueSpec := spec.(*ast.ValueSpec)
-		stmts = append(stmts, compileValueSpec(valueSpec)...)
+		var compiled []py.Stmt
+		switch spec := spec.(type) {
+		case *ast.ValueSpec:
+			compiled = compileValueSpec(spec)
+		case *ast.TypeSpec:
+			compiled = []py.Stmt{compileTypeSpec(spec)}
+		default:
+			panic(fmt.Sprintf("unknown Spec: %T", spec))
+		}
+		stmts = append(stmts, compiled...)
 	}
 	return stmts
 }

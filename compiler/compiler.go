@@ -12,6 +12,7 @@ type Module struct {
 	Imports   []py.Stmt
 	Values    []py.Stmt
 	Classes   []*py.ClassDef
+	Types     []py.Stmt
 	Functions []*py.FunctionDef
 	Methods   map[py.Identifier][]*py.FunctionDef
 }
@@ -99,6 +100,15 @@ func nilValue(typ ast.Expr) py.Expr {
 }
 
 func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
+	if len(typ.Fields.List) == 0 {
+		return &py.ClassDef{
+			Name:          identifier(ident),
+			Bases:         nil,
+			Keywords:      nil,
+			Body:          []py.Stmt{&py.Pass{}},
+			DecoratorList: nil,
+		}
+	}
 	args := []py.Arg{py.Arg{Arg: pySelf}}
 	var defaults []py.Expr
 	for _, field := range typ.Fields.List {
@@ -138,10 +148,12 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 	}
 }
 
-func compileTypeSpec(spec *ast.TypeSpec, module *Module) {
+func compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 	switch t := spec.Type.(type) {
 	case *ast.StructType:
-		module.Classes = append(module.Classes, compileStructType(spec.Name, t))
+		return compileStructType(spec.Name, t)
+	case *ast.Ident:
+		return &py.Assign{Targets: []py.Expr{compileIdent(spec.Name)}, Value: compileIdent(t)}
 	default:
 		panic(fmt.Sprintf("unknown TypeSpec: %T", spec.Type))
 	}
@@ -155,7 +167,12 @@ func compileGenDecl(decl *ast.GenDecl, module *Module) {
 	for _, spec := range decl.Specs {
 		switch s := spec.(type) {
 		case *ast.TypeSpec:
-			compileTypeSpec(s, module)
+			compiled := compileTypeSpec(s)
+			if classDef, ok := compiled.(*py.ClassDef); ok {
+				module.Classes = append(module.Classes, classDef)
+			} else {
+				module.Types = append(module.Types, compiled)
+			}
 		case *ast.ImportSpec:
 			compileImportSpec(s, module)
 		case *ast.ValueSpec:

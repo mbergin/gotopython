@@ -243,6 +243,54 @@ var stmtTests = []struct {
 		},
 	}},
 
+	// Type declarations
+	{"type T U", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{T},
+			Value:   U,
+		},
+	}},
+	//{"type T interface{}", []py.Stmt{}},
+	//{"type T string", []py.Stmt{}},
+	//{"type T int", []py.Stmt{}},
+	//{"type T bool", []py.Stmt{}},
+	//{"type T []U", []py.Stmt{}},
+	//{"type T map[U]V", []py.Stmt{}},
+	{"type T struct {}", []py.Stmt{
+		&py.ClassDef{
+			Name: T.Id,
+			Body: []py.Stmt{&py.Pass{}},
+		},
+	}},
+	{"type T struct { x U }", []py.Stmt{
+		&py.ClassDef{
+			Name: T.Id,
+			Body: []py.Stmt{&py.FunctionDef{
+				Name: py.Identifier("__init__"),
+				Args: py.Arguments{
+					Args: []py.Arg{
+						py.Arg{Arg: pySelf},
+						py.Arg{Arg: x.Id},
+					},
+					Defaults: []py.Expr{
+						&py.Call{Func: U},
+					},
+				},
+				Body: []py.Stmt{
+					&py.Assign{
+						Targets: []py.Expr{
+							&py.Attribute{
+								Value: &py.Name{Id: pySelf},
+								Attr:  x.Id,
+							},
+						},
+						Value: x,
+					},
+				},
+			}},
+		},
+	}},
+
 	// Switch statements
 	{"switch {}", nil},
 	{"switch x {}", []py.Stmt{
