@@ -171,6 +171,9 @@ func compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
 func compileCallExpr(expr *ast.CallExpr) py.Expr {
 	if ident, ok := expr.Fun.(*ast.Ident); ok {
 		switch ident.Name {
+		// TODO need to use proper name resolution to make sure these
+		// are really calls to builtin functions and not user-defined
+		// functions that hide them.
 		case "make":
 			typ := expr.Args[0]
 			switch t := typ.(type) {
