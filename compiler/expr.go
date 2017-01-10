@@ -136,28 +136,49 @@ func compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 }
 
 func compileCompositeLit(expr *ast.CompositeLit) py.Expr {
-	var args []py.Expr
-	var keywords []py.Keyword
-	if len(expr.Elts) > 0 {
-		if _, ok := expr.Elts[0].(*ast.KeyValueExpr); ok {
-			for _, elt := range expr.Elts {
-				kv := elt.(*ast.KeyValueExpr)
-				id := identifier(kv.Key.(*ast.Ident))
-				keyword := py.Keyword{
-					Arg:   &id,
-					Value: compileExpr(kv.Value)}
-				keywords = append(keywords, keyword)
-			}
-		} else {
-			for _, elt := range expr.Elts {
-				args = append(args, compileExpr(elt))
+	switch typ := expr.Type.(type) {
+	case *ast.Ident:
+		var args []py.Expr
+		var keywords []py.Keyword
+		if len(expr.Elts) > 0 {
+			if _, ok := expr.Elts[0].(*ast.KeyValueExpr); ok {
+				for _, elt := range expr.Elts {
+					kv := elt.(*ast.KeyValueExpr)
+					id := identifier(kv.Key.(*ast.Ident))
+					keyword := py.Keyword{
+						Arg:   &id,
+						Value: compileExpr(kv.Value)}
+					keywords = append(keywords, keyword)
+				}
+			} else {
+				args = make([]py.Expr, len(expr.Elts))
+				for i, elt := range expr.Elts {
+					args[i] = compileExpr(elt)
+				}
 			}
 		}
-	}
-	return &py.Call{
-		Func:     compileIdent(expr.Type.(*ast.Ident)),
-		Args:     args,
-		Keywords: keywords,
+		return &py.Call{
+			Func:     compileIdent(typ),
+			Args:     args,
+			Keywords: keywords,
+		}
+	case *ast.ArrayType:
+		elts := make([]py.Expr, len(expr.Elts))
+		for i, elt := range expr.Elts {
+			elts[i] = compileExpr(elt)
+		}
+		return &py.List{Elts: elts}
+	case *ast.MapType:
+		keys := make([]py.Expr, len(expr.Elts))
+		values := make([]py.Expr, len(expr.Elts))
+		for i, elt := range expr.Elts {
+			kv := elt.(*ast.KeyValueExpr)
+			keys[i] = compileExpr(kv.Key)
+			values[i] = compileExpr(kv.Value)
+		}
+		return &py.Dict{Keys: keys, Values: values}
+	default:
+		panic(fmt.Sprintf("Unknown composite literal type: %T", expr.Type))
 	}
 }
 
@@ -169,8 +190,9 @@ func compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
 }
 
 func compileCallExpr(expr *ast.CallExpr) py.Expr {
-	if ident, ok := expr.Fun.(*ast.Ident); ok {
-		switch ident.Name {
+	switch fun := expr.Fun.(type) {
+	case *ast.Ident:
+		switch fun.Name {
 		// TODO need to use proper name resolution to make sure these
 		// are really calls to builtin functions and not user-defined
 		// functions that hide them.
@@ -200,6 +222,10 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 				panic("bad type in make()")
 			}
 		}
+	case *ast.ArrayType, *ast.ChanType, *ast.FuncType,
+		*ast.InterfaceType, *ast.MapType, *ast.StructType:
+		// TODO implement type conversions
+		return compileExpr(expr.Args[0])
 	}
 	return &py.Call{
 		Func: compileExpr(expr.Fun),

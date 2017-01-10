@@ -93,6 +93,18 @@ var exprTests = []struct {
 	{"T{}", &py.Call{Func: T}},
 	{"T{x, y}", &py.Call{Func: T, Args: []py.Expr{x, y}}},
 	{"T{x: y}", &py.Call{Func: T, Keywords: []py.Keyword{py.Keyword{Arg: &x.Id, Value: y}}}},
+	{"[2]T{x, y}", &py.List{Elts: []py.Expr{x, y}}},
+	{"[...]T{x, y}", &py.List{Elts: []py.Expr{x, y}}},
+	{"[]T{x, y}", &py.List{Elts: []py.Expr{x, y}}},
+	{"[]T{x, y}", &py.List{Elts: []py.Expr{x, y}}},
+	{"map[T]U{}", &py.Dict{
+		Keys:   []py.Expr{},
+		Values: []py.Expr{},
+	}},
+	{"map[T]U{x: y, z: w}", &py.Dict{
+		Keys:   []py.Expr{x, z},
+		Values: []py.Expr{y, w},
+	}},
 
 	// Comparison operators
 	{"x==y", &py.Compare{Left: x, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.Eq}}},
