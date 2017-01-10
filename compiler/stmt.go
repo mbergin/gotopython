@@ -76,6 +76,41 @@ func compileIncDecStmt(s *ast.IncDecStmt) py.Stmt {
 	}
 }
 
+func compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
+	var targets []py.Expr
+	var values []py.Expr
+
+	// Three cases here:
+	// 1. There are no values, in which case everything is zero-initialized.
+	// 2. There is a value for each name.
+	// 3. There is one value and it's a function returning multiple values.
+
+	// Go                     Python
+	// var x, y int           x, y = 0, 0
+	// var x, y int = 1, 2    x, y = 1, 2
+	// var x, y int = f()     x, y = f()
+
+	for i, ident := range spec.Names {
+		target := compileIdent(ident)
+
+		if len(spec.Values) == 0 {
+			value := nilValue(spec.Type)
+			values = append(values, value)
+		} else if i < len(spec.Values) {
+			value := compileExpr(spec.Values[i])
+			values = append(values, value)
+		}
+
+		targets = append(targets, target)
+	}
+	return []py.Stmt{
+		&py.Assign{
+			Targets: targets,
+			Value:   makeTuple(values),
+		},
+	}
+}
+
 func compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 	var stmts []py.Stmt
 	genDecl := s.Decl.(*ast.GenDecl)

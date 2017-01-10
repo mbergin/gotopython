@@ -10,6 +10,7 @@ var pySelf = py.Identifier("self")
 
 type Module struct {
 	Imports   []py.Stmt
+	Values    []py.Stmt
 	Classes   []*py.ClassDef
 	Functions []*py.FunctionDef
 	Methods   map[py.Identifier][]*py.FunctionDef
@@ -150,41 +151,6 @@ func compileImportSpec(spec *ast.ImportSpec, module *Module) {
 	//TODO
 }
 
-func compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
-	var targets []py.Expr
-	var values []py.Expr
-
-	// Three cases here:
-	// 1. There are no values, in which case everything is zero-initialized.
-	// 2. There is a value for each name.
-	// 3. There is one value and it's a function returning multiple values.
-
-	// Go                     Python
-	// var x, y int           x, y = 0, 0
-	// var x, y int = 1, 2    x, y = 1, 2
-	// var x, y int = f()     x, y = f()
-
-	for i, ident := range spec.Names {
-		target := compileIdent(ident)
-
-		if len(spec.Values) == 0 {
-			value := nilValue(spec.Type)
-			values = append(values, value)
-		} else if i < len(spec.Values) {
-			value := compileExpr(spec.Values[i])
-			values = append(values, value)
-		}
-
-		targets = append(targets, target)
-	}
-	return []py.Stmt{
-		&py.Assign{
-			Targets: targets,
-			Value:   makeTuple(values),
-		},
-	}
-}
-
 func compileGenDecl(decl *ast.GenDecl, module *Module) {
 	for _, spec := range decl.Specs {
 		switch s := spec.(type) {
@@ -192,6 +158,8 @@ func compileGenDecl(decl *ast.GenDecl, module *Module) {
 			compileTypeSpec(s, module)
 		case *ast.ImportSpec:
 			compileImportSpec(s, module)
+		case *ast.ValueSpec:
+			module.Values = append(module.Values, compileValueSpec(s)...)
 		default:
 			panic(fmt.Sprintf("unknown Spec: %T", s))
 		}
@@ -227,6 +195,7 @@ func CompilePackage(pkg *ast.Package) *py.Module {
 		compileFile(file, module)
 	}
 	pyModule := &py.Module{}
+	pyModule.Body = append(pyModule.Body, module.Values...)
 	for _, class := range module.Classes {
 		for _, method := range module.Methods[class.Name] {
 			class.Body = append(class.Body, method)
