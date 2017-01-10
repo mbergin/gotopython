@@ -41,7 +41,7 @@ The parts of the Go language spec that are implemented are:
 | Statement      | Example                     | Implemented |
 |----------------|-----------------------------|-------------|
 | BadStmt        |                             | n/a         |
-| DeclStmt       | `var x T`                   |             |
+| DeclStmt       | `var x T` `const x = 1`     |             |
 | EmptyStmt      |                             |             |
 | LabeledStmt    | `label: ...`                |             |
 | ExprStmt       | `x`                         | ✓           |
@@ -66,11 +66,11 @@ The parts of the Go language spec that are implemented are:
 2. No `fallthrough`
 3. Only for array/slice
 
-| Spec       | Example      | Implemented |
-|------------|--------------|-------------|
-| ImportSpec | `import "x"` |             |
-| ValueSpec  | `var x T`    |             |
-| TypeSpec   | `type T U`   | ✓           |
+| Spec       | Example                 | Implemented |
+|------------|-------------------------|-------------|
+| ImportSpec | `import "x"`            |             |
+| ValueSpec  | `var x T` `const x = 1` | ✓           |
+| TypeSpec   | `type T U`              | ✓           |
 
 | Built-in function | Implemented |
 |-------------------| ------------|

@@ -222,6 +222,26 @@ var stmtTests = []struct {
 		},
 	}},
 
+	// Const declarations
+	{"const x, y = 1, 2", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x, y},
+			Value: &py.Tuple{
+				Elts: []py.Expr{one, two},
+			},
+		},
+	}},
+	{"const (x = y; z = w)", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{x},
+			Value:   y,
+		},
+		&py.Assign{
+			Targets: []py.Expr{z},
+			Value:   w,
+		},
+	}},
+
 	// Switch statements
 	{"switch {}", nil},
 	{"switch x {}", []py.Stmt{
