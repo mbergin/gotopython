@@ -1,5 +1,7 @@
 package pythonast
 
+// See https://hg.python.org/cpython/file/tip/Parser/Python.asdl
+
 type Module struct {
 	Body []Stmt
 }
