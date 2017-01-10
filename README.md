@@ -27,13 +27,13 @@ The parts of the Go language spec that are implemented are:
 | SliceExpr      | `x[y:z]`                  | ✓           |
 | TypeAssertExpr | `x.(T)`                   |             |
 | CallExpr       | `x(y,z)`                  | ✓           |
-| StarExpr       | `*x`                      |             |
+| StarExpr       | `*x`                      | ✓           |
 | UnaryExpr      | `-x`                      | ✓           |
 | BinaryExpr     | `x+y`                     | ✓           |
 | KeyValueExpr   | `x: y`                    | ✓           |
 | ArrayType      | `[]T`                     | ✓           |
-| StructType     | `struct { T x }`          |             |
-| FuncType       | `func(T) U`               |             |
+| StructType     | `struct { T x }`          | ✓           |
+| FuncType       | `func(T) U`               | ✓           |
 | InterfaceType  | `interface {}`            |             |
 | MapType        | `map[T]U`                 | ✓           |
 | ChanType       | `chan<- T`                |             |
@@ -41,7 +41,7 @@ The parts of the Go language spec that are implemented are:
 | Statement      | Example                     | Implemented |
 |----------------|-----------------------------|-------------|
 | BadStmt        |                             | n/a         |
-| DeclStmt       | `var x T` `const x = 1`     |             |
+| DeclStmt       | `var x T` `const x = 1`     | ✓           |
 | EmptyStmt      |                             | ✓           |
 | LabeledStmt    | `label: ...`                |             |
 | ExprStmt       | `x`                         | ✓           |
