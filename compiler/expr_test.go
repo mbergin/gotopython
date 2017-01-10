@@ -166,6 +166,9 @@ var exprTests = []struct {
 					Args: []py.Expr{x}},
 			}}}},
 	{"make(map[T]U)", &py.Dict{}},
+	// TODO this should return a byte count for strings --
+	// len() in Python returns a character count
+	{"len(x)", &py.Call{Func: pyLen, Args: []py.Expr{x}}},
 }
 
 var sp = spew.NewDefaultConfig()
