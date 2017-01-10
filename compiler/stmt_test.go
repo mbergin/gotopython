@@ -33,6 +33,9 @@ var stmtTests = []struct {
 	golang string
 	python []py.Stmt
 }{
+	// Empty statement
+	{";", []py.Stmt{}},
+
 	// Expression statement
 	{"x", []py.Stmt{&py.ExprStmt{Value: x}}},
 

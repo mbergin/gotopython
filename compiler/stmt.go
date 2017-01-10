@@ -366,6 +366,8 @@ func compileStmt(stmt ast.Stmt) []py.Stmt {
 		return compileTypeSwitchStmt(s)
 	case *ast.BranchStmt:
 		return []py.Stmt{compileBranchStmt(s)}
+	case *ast.EmptyStmt:
+		return []py.Stmt{}
 	}
 	panic(fmt.Sprintf("unknown Stmt: %T", stmt))
 }

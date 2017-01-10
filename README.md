@@ -42,7 +42,7 @@ The parts of the Go language spec that are implemented are:
 |----------------|-----------------------------|-------------|
 | BadStmt        |                             | n/a         |
 | DeclStmt       | `var x T` `const x = 1`     |             |
-| EmptyStmt      |                             |             |
+| EmptyStmt      |                             | ✓           |
 | LabeledStmt    | `label: ...`                |             |
 | ExprStmt       | `x`                         | ✓           |
 | SendStmt       | `x <- y`                    |             |
