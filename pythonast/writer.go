@@ -53,8 +53,12 @@ func (w *Writer) writeStmt(stmt Stmt) {
 		w.write(" = ")
 		w.writeExpr(s.Value)
 	case *Return:
-		w.write("return ")
-		w.writeExpr(s.Value)
+		if s.Value != nil {
+			w.write("return ")
+			w.writeExpr(s.Value)
+		} else {
+			w.write("return")
+		}
 	case *Pass:
 		w.write("pass")
 	case *ExprStmt:
