@@ -182,12 +182,30 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 		w.boolOpExpr(e)
 	case *UnaryOpExpr:
 		w.unaryOpExpr(e)
+	case *ListComp:
+		w.listComp(e)
 	default:
 		panic(fmt.Sprintf("unknown Expr: %T", expr))
 	}
 	if paren {
 		w.endParen()
 	}
+}
+
+func (w *Writer) listComp(e *ListComp) {
+	w.write("[")
+	w.writeExpr(e.Elt)
+	for _, g := range e.Generators {
+		w.write(" for ")
+		w.writeExpr(g.Target)
+		w.write(" in ")
+		w.writeExpr(g.Iter)
+		for _, ifExpr := range g.Ifs {
+			w.write(" if ")
+			w.writeExpr(ifExpr)
+		}
+	}
+	w.write("]")
 }
 
 func (w *Writer) boolOpExpr(e *BoolOpExpr) {
