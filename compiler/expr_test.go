@@ -201,6 +201,8 @@ var exprTests = []struct {
 	// TODO this should return a byte count for strings --
 	// len() in Python returns a character count
 	{"len(x)", &py.Call{Func: pyLen, Args: []py.Expr{x}}},
+	{"new(T)", &py.Call{Func: T}},
+	{"new(int)", &py.Num{N: "0"}},
 }
 
 var sp = spew.NewDefaultConfig()

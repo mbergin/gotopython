@@ -240,6 +240,9 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 			default:
 				panic("bad type in make()")
 			}
+		case "new":
+			typ := expr.Args[0]
+			return nilValue(typ)
 		}
 	case *ast.ArrayType, *ast.ChanType, *ast.FuncType,
 		*ast.InterfaceType, *ast.MapType, *ast.StructType:
