@@ -37,83 +37,107 @@ func (w *Writer) writeStmt(stmt Stmt) {
 	case *ClassDef:
 		w.classDef(s)
 	case *While:
-		w.write("while ")
-		w.writeExpr(s.Test)
-		w.write(":")
-		w.indent()
-		w.writeStmts(s.Body)
-		w.dedent()
+		w.while(s)
 	case *Assign:
-		for i, target := range s.Targets {
-			if i > 0 {
-				w.comma()
-			}
-			w.writeExpr(target)
-		}
-		w.write(" = ")
-		w.writeExpr(s.Value)
+		w.assign(s)
 	case *Return:
-		if s.Value != nil {
-			w.write("return ")
-			w.writeExpr(s.Value)
-		} else {
-			w.write("return")
-		}
+		w.ret(s)
 	case *Pass:
 		w.write("pass")
 	case *ExprStmt:
 		w.writeExpr(s.Value)
 	case *If:
-		w.write("if ")
-		w.writeExpr(s.Test)
-		w.write(":")
-		w.indent()
-		w.writeStmts(s.Body)
-		w.dedent()
-		if s.Orelse != nil {
-			if elif, ok := s.Orelse[0].(*If); ok {
-				w.write("el")
-				w.writeStmt(elif)
-			} else {
-				w.write("else:")
-				w.indent()
-				w.writeStmts(s.Orelse)
-				w.dedent()
-			}
-		}
+		w.ifStmt(s)
 	case *AugAssign:
 		w.augAssign(s)
 	case *For:
-		w.write("for ")
-		w.writeExpr(s.Target)
-		w.write(" in ")
-		w.writeExpr(s.Iter)
-		w.write(":")
-		w.indent()
-		for i, bodyStmt := range s.Body {
-			if i > 0 {
-				w.newline()
-			}
-			w.writeStmt(bodyStmt)
-		}
-		w.dedent()
+		w.forLoop(s)
 	case *Break:
 		w.write("break")
 	case *Continue:
 		w.write("continue")
 	case *Delete:
-		w.write("del ")
-		for i, target := range s.Targets {
-			if i > 0 {
-				w.comma()
-			}
-			w.writeExpr(target)
-		}
+		w.del(s)
 	case *Try:
 		w.try(s)
 	default:
 		panic(fmt.Sprintf("unknown Stmt: %T", stmt))
 	}
+}
+
+func (w *Writer) ret(s *Return) {
+	if s.Value != nil {
+		w.write("return ")
+		w.writeExpr(s.Value)
+	} else {
+		w.write("return")
+	}
+}
+
+func (w *Writer) del(s *Delete) {
+	w.write("del ")
+	for i, target := range s.Targets {
+		if i > 0 {
+			w.comma()
+		}
+		w.writeExpr(target)
+	}
+}
+
+func (w *Writer) assign(s *Assign) {
+	for i, target := range s.Targets {
+		if i > 0 {
+			w.comma()
+		}
+		w.writeExpr(target)
+	}
+	w.write(" = ")
+	w.writeExpr(s.Value)
+}
+
+func (w *Writer) while(s *While) {
+	w.write("while ")
+	w.writeExpr(s.Test)
+	w.write(":")
+	w.indent()
+	w.writeStmts(s.Body)
+	w.dedent()
+}
+
+func (w *Writer) ifStmt(s *If) {
+	w.write("if ")
+	w.writeExpr(s.Test)
+	w.write(":")
+	w.indent()
+	w.writeStmts(s.Body)
+	w.dedent()
+	if s.Orelse != nil {
+		if elif, ok := s.Orelse[0].(*If); ok {
+			w.write("el")
+			w.writeStmt(elif)
+		} else {
+			w.write("else:")
+			w.indent()
+			w.writeStmts(s.Orelse)
+			w.dedent()
+		}
+	}
+}
+
+func (w *Writer) forLoop(s *For) {
+	w.write("for ")
+	w.writeExpr(s.Target)
+	w.write(" in ")
+	w.writeExpr(s.Iter)
+	w.write(":")
+	w.indent()
+	for i, bodyStmt := range s.Body {
+		if i > 0 {
+			w.newline()
+		}
+		w.writeStmt(bodyStmt)
+	}
+	w.dedent()
 }
 
 func (w *Writer) try(s *Try) {
