@@ -412,8 +412,8 @@ type Comprehension struct {
 
 type ExceptHandler struct {
 	Typ  Expr
-	Name *Identifier
-	Body *Stmt
+	Name Identifier
+	Body []Stmt
 }
 
 type Arguments struct {

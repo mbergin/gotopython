@@ -387,6 +387,19 @@ var stmtTests = []struct {
 			},
 		},
 	}},
+
+	// Builtin functions
+	{"delete(x, y)", []py.Stmt{
+		&py.Try{
+			Body: []py.Stmt{
+				&py.Delete{Targets: []py.Expr{&py.Subscript{Value: x, Slice: &py.Index{Value: y}}}},
+			},
+			Handlers: []py.ExceptHandler{
+				{Typ: &py.Name{Id: py.Identifier("KeyError")},
+					Body: []py.Stmt{&py.Pass{}}},
+			},
+		},
+	}},
 }
 
 func parseStmt(stmt string) (ast.Stmt, error) {

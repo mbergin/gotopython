@@ -79,13 +79,13 @@ The parts of the Go language spec that are implemented are:
 | `close`           |             |
 | `len`             | 1           |
 | `cap`             |             |
-| `new`             |             |
+| `new`             | ✓           |
 | `make([]T)`       | ✓           |
 | `make(map[T]U)`   | ✓           |
 | `make(chan T)`    |             |
 | `append`          |             |
 | `copy`            |             |
-| `delete`          |             |
+| `delete`          | ✓           |
 | `complex`         |             |
 | `real`            |             |
 | `imag`            |             |

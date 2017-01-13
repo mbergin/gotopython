@@ -20,6 +20,7 @@ var (
 	pyLen       = &py.Name{Id: py.Identifier("len")}
 	pyEnumerate = &py.Name{Id: py.Identifier("enumerate")}
 	pyType      = &py.Name{Id: py.Identifier("type")}
+	pyKeyError  = &py.Name{Id: py.Identifier("KeyError")}
 )
 
 func isBlank(expr ast.Expr) bool {
@@ -340,6 +341,39 @@ func compileForStmt(s *ast.ForStmt) []py.Stmt {
 	return stmts
 }
 
+func compileExprToStmt(e ast.Expr) []py.Stmt {
+	switch e := e.(type) {
+	case *ast.CallExpr:
+		switch fun := e.Fun.(type) {
+		case *ast.Ident:
+			switch fun.Name {
+			case "delete":
+				return []py.Stmt{
+					&py.Try{
+						Body: []py.Stmt{
+							&py.Delete{
+								Targets: []py.Expr{
+									&py.Subscript{
+										Value: compileExpr(e.Args[0]),
+										Slice: &py.Index{compileExpr(e.Args[1])},
+									},
+								},
+							},
+						},
+						Handlers: []py.ExceptHandler{
+							py.ExceptHandler{
+								Typ:  pyKeyError,
+								Body: []py.Stmt{&py.Pass{}},
+							},
+						},
+					},
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func compileStmt(stmt ast.Stmt) []py.Stmt {
 	switch s := stmt.(type) {
 	case *ast.ReturnStmt:
@@ -351,6 +385,9 @@ func compileStmt(stmt ast.Stmt) []py.Stmt {
 	case *ast.AssignStmt:
 		return []py.Stmt{compileAssignStmt(s)}
 	case *ast.ExprStmt:
+		if compiled := compileExprToStmt(s.X); compiled != nil {
+			return compiled
+		}
 		return []py.Stmt{&py.ExprStmt{Value: compileExpr(s.X)}}
 	case *ast.RangeStmt:
 		return []py.Stmt{compileRangeStmt(s)}

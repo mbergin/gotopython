@@ -101,8 +101,46 @@ func (w *Writer) writeStmt(stmt Stmt) {
 		w.write("break")
 	case *Continue:
 		w.write("continue")
+	case *Delete:
+		w.write("del ")
+		for i, target := range s.Targets {
+			if i > 0 {
+				w.comma()
+			}
+			w.writeExpr(target)
+		}
+	case *Try:
+		w.try(s)
 	default:
 		panic(fmt.Sprintf("unknown Stmt: %T", stmt))
+	}
+}
+
+func (w *Writer) try(s *Try) {
+	w.write("try:")
+	w.indent()
+	w.writeStmts(s.Body)
+	w.dedent()
+	for _, handler := range s.Handlers {
+		w.write("except")
+		if handler.Typ != nil {
+			w.write(" ")
+			w.writeExpr(handler.Typ)
+			if handler.Name != Identifier("") {
+				w.write(" as ")
+				w.identifier(handler.Name)
+			}
+		}
+		w.write(":")
+		w.indent()
+		w.writeStmts(handler.Body)
+		w.dedent()
+	}
+	if len(s.Orelse) > 0 {
+		w.write("else:")
+		w.indent()
+		w.writeStmts(s.Orelse)
+		w.dedent()
 	}
 }
 
