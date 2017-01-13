@@ -177,6 +177,30 @@ func (w *Writer) augAssign(s *AugAssign) {
 	w.writeExpr(s.Value)
 }
 
+func (w *Writer) call(e *Call) {
+	prec := e.Precedence()
+	w.writeExprPrec(e.Func, prec)
+	w.beginParen()
+	i := 0
+	for _, arg := range e.Args {
+		if i != 0 {
+			w.comma()
+		}
+		w.writeExprPrec(arg, prec)
+		i++
+	}
+	for _, kw := range e.Keywords {
+		if i != 0 {
+			w.comma()
+		}
+		w.identifier(*kw.Arg)
+		w.write("=")
+		w.writeExprPrec(kw.Value, prec)
+		i++
+	}
+	w.endParen()
+}
+
 func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 	if expr == nil {
 		panic("nil expr")
@@ -211,26 +235,7 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 			w.writeExprPrec(elt, prec)
 		}
 	case *Call:
-		w.writeExprPrec(e.Func, prec)
-		w.beginParen()
-		i := 0
-		for _, arg := range e.Args {
-			if i != 0 {
-				w.comma()
-			}
-			w.writeExprPrec(arg, prec)
-			i++
-		}
-		for _, kw := range e.Keywords {
-			if i != 0 {
-				w.comma()
-			}
-			w.identifier(*kw.Arg)
-			w.write("=")
-			w.writeExprPrec(kw.Value, prec)
-			i++
-		}
-		w.endParen()
+		w.call(e)
 	case *Attribute:
 		w.writeExprPrec(e.Value, prec)
 		w.write(".")
