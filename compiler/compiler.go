@@ -208,9 +208,9 @@ func (c *Compiler) compileFile(file *ast.File, module *Module) {
 	}
 }
 
-func (c *Compiler) CompilePackage(pkg *ast.Package) *py.Module {
+func (c *Compiler) CompileFiles(files []*ast.File) *py.Module {
 	module := &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
-	for _, file := range pkg.Files {
+	for _, file := range files {
 		c.compileFile(file, module)
 	}
 	pyModule := &py.Module{}
@@ -225,4 +225,12 @@ func (c *Compiler) CompilePackage(pkg *ast.Package) *py.Module {
 		pyModule.Body = append(pyModule.Body, fun)
 	}
 	return pyModule
+}
+
+func (c *Compiler) CompilePackage(pkg *ast.Package) *py.Module {
+	var files []*ast.File
+	for _, file := range pkg.Files {
+		files = append(files, file)
+	}
+	return c.CompileFiles(files)
 }

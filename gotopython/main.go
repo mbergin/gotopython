@@ -7,8 +7,8 @@ import (
 	"github.com/mbergin/gotopython/compiler"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
-	"go/parser"
-	"go/token"
+	"go/build"
+	"golang.org/x/tools/go/loader"
 	"os"
 )
 
@@ -19,14 +19,18 @@ var (
 	httpAddress   = flag.String("http", "", "HTTP service address (e.g. ':8080')")
 )
 
-var (
-	errInput  = 1
-	errOutput = 2
-	errNoDir  = 3
+const (
+	_ = iota
+	errArgs
+	errParse
+	errOutput
+	errNoDir
+	errBuild
+	errTypeCheck
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: gotopython [flags] packagedir\n")
+	fmt.Fprintf(os.Stderr, "usage: gotopython [flags] package\n")
 	flag.PrintDefaults()
 }
 
@@ -43,24 +47,38 @@ func main() {
 		os.Exit(errNoDir)
 	}
 
-	dir := flag.Arg(0)
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, parser.ParseComments)
+	var loaderConfig loader.Config
+	const xtest = false
+	_, err := loaderConfig.FromArgs(flag.Args(), xtest)
+	// TODO ignoring args after "--"
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(errInput)
+		os.Exit(errArgs)
 	}
 
-	if *dumpGoAST {
-		ast.Print(fset, pkgs)
+	buildContext := build.Default
+	buildContext.GOARCH = "python"
+	program, err := loaderConfig.Load()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(errBuild)
 	}
 
-	for _, pkg := range pkgs {
+	for _, pkg := range program.InitialPackages() {
+		if *dumpGoAST {
+			spew.Dump(pkg.Info)
+			for _, file := range pkg.Files {
+				ast.Print(program.Fset, file)
+			}
+		}
+
 		c := &compiler.Compiler{}
-		module := c.CompilePackage(pkg)
+		module := c.CompileFiles(pkg.Files)
+
 		if *dumpPythonAST {
 			spew.Dump(module)
 		}
+
 		writer := os.Stdout
 		if *output != "" {
 			writer, err = os.Create(*output)
