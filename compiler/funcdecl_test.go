@@ -101,7 +101,8 @@ func TestFuncDecl(t *testing.T) {
 			t.Errorf("failed to parse Go stmt %q: %s", test.golang, err)
 			continue
 		}
-		pyFuncDecl := compileFuncDecl(funcDecl)
+		c := &Compiler{}
+		pyFuncDecl := c.compileFuncDecl(funcDecl)
 		if !reflect.DeepEqual(pyFuncDecl, test.python) {
 			t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyFuncDecl))
 		}

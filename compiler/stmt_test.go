@@ -434,7 +434,8 @@ func TestStmt(t *testing.T) {
 			t.Errorf("failed to parse Go stmt %q: %s", test.golang, err)
 			continue
 		}
-		pyStmt := compileStmt(goStmt)
+		c := &Compiler{}
+		pyStmt := c.compileStmt(goStmt)
 		if !reflect.DeepEqual(pyStmt, test.python) {
 			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmt))
 		}

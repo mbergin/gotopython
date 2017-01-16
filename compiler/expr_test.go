@@ -219,7 +219,8 @@ func TestExpr(t *testing.T) {
 			t.Errorf("failed to parse Go expr %q: %s", test.golang, err)
 			continue
 		}
-		pyExpr := compileExpr(goExpr)
+		c := &Compiler{}
+		pyExpr := c.compileExpr(goExpr)
 		if !reflect.DeepEqual(pyExpr, test.python) {
 			t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyExpr))
 		}
