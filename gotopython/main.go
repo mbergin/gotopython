@@ -22,11 +22,9 @@ var (
 const (
 	_ = iota
 	errArgs
-	errParse
 	errOutput
 	errNoDir
 	errBuild
-	errTypeCheck
 )
 
 func usage() {
