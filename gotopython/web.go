@@ -146,20 +146,13 @@ func main() {
 
 var tmpl = template.Must(template.New("template").Parse(tmplStr))
 
-func parseCode(code string) (*ast.Package, error) {
+func parseCode(code string) ([]*ast.File, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "file.go", code, 0)
 	if err != nil {
 		return nil, err
 	}
-	pkg := &ast.Package{
-		Name:  "file",
-		Files: map[string]*ast.File{"file.go": file},
-	}
-	if err != nil {
-		return nil, err
-	}
-	return pkg, nil
+	return []*ast.File{file}, nil
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -169,12 +162,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if data.GoCode == "" {
 		data.GoCode = initialGoCode
 	}
-	pkg, err := parseCode(data.GoCode)
+	files, err := parseCode(data.GoCode)
 	if err != nil {
 		data.PythonCode = fmt.Sprintf("%s", err)
 	} else {
 		c := compiler.Compiler{}
-		module := c.CompilePackage(pkg)
+		module := c.CompileFiles(files)
 		var writer bytes.Buffer
 		pyWriter := pythonast.NewWriter(&writer)
 		pyWriter.WriteModule(module)

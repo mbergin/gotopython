@@ -226,11 +226,3 @@ func (c *Compiler) CompileFiles(files []*ast.File) *py.Module {
 	}
 	return pyModule
 }
-
-func (c *Compiler) CompilePackage(pkg *ast.Package) *py.Module {
-	var files []*ast.File
-	for _, file := range pkg.Files {
-		files = append(files, file)
-	}
-	return c.CompileFiles(files)
-}
