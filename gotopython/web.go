@@ -173,7 +173,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.PythonCode = fmt.Sprintf("%s", err)
 	} else {
-		module := compiler.CompilePackage(pkg)
+		c := compiler.Compiler{}
+		module := c.CompilePackage(pkg)
 		var writer bytes.Buffer
 		pyWriter := pythonast.NewWriter(&writer)
 		pyWriter.WriteModule(module)
