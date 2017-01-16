@@ -14,7 +14,7 @@ var (
 	pyEmptyString = &py.Str{S: `""`}
 )
 
-func compileIdent(ident *ast.Ident) py.Expr {
+func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	switch ident.Name {
 	case "true":
 		return pyTrue
@@ -27,7 +27,7 @@ func compileIdent(ident *ast.Ident) py.Expr {
 	}
 }
 
-func comparator(t token.Token) (py.CmpOp, bool) {
+func (c *Compiler) comparator(t token.Token) (py.CmpOp, bool) {
 	switch t {
 	case token.EQL:
 		return py.Eq, true
@@ -45,7 +45,7 @@ func comparator(t token.Token) (py.CmpOp, bool) {
 	return py.CmpOp(0), false
 }
 
-func binOp(t token.Token) (py.Operator, bool) {
+func (c *Compiler) binOp(t token.Token) (py.Operator, bool) {
 	switch t {
 	case token.ADD:
 		return py.Add, true
@@ -72,7 +72,7 @@ func binOp(t token.Token) (py.Operator, bool) {
 	return py.Operator(0), false
 }
 
-func boolOp(t token.Token) (py.BoolOp, bool) {
+func (c *Compiler) boolOp(t token.Token) (py.BoolOp, bool) {
 	switch t {
 	case token.LAND:
 		return py.And, true
@@ -82,32 +82,32 @@ func boolOp(t token.Token) (py.BoolOp, bool) {
 	return py.BoolOp(0), false
 }
 
-func compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
-	if pyCmp, ok := comparator(expr.Op); ok {
+func (c *Compiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
+	if pyCmp, ok := c.comparator(expr.Op); ok {
 		return &py.Compare{
-			Left:        compileExpr(expr.X),
+			Left:        c.compileExpr(expr.X),
 			Ops:         []py.CmpOp{pyCmp},
-			Comparators: []py.Expr{compileExpr(expr.Y)}}
+			Comparators: []py.Expr{c.compileExpr(expr.Y)}}
 	}
-	if pyOp, ok := binOp(expr.Op); ok {
-		return &py.BinOp{Left: compileExpr(expr.X),
-			Right: compileExpr(expr.Y),
+	if pyOp, ok := c.binOp(expr.Op); ok {
+		return &py.BinOp{Left: c.compileExpr(expr.X),
+			Right: c.compileExpr(expr.Y),
 			Op:    pyOp}
 	}
-	if pyBoolOp, ok := boolOp(expr.Op); ok {
+	if pyBoolOp, ok := c.boolOp(expr.Op); ok {
 		return &py.BoolOpExpr{
-			Values: []py.Expr{compileExpr(expr.X), compileExpr(expr.Y)},
+			Values: []py.Expr{c.compileExpr(expr.X), c.compileExpr(expr.Y)},
 			Op:     pyBoolOp}
 	}
 	if expr.Op == token.AND_NOT {
-		return &py.BinOp{Left: compileExpr(expr.X),
-			Right: &py.UnaryOpExpr{Op: py.Invert, Operand: compileExpr(expr.Y)},
+		return &py.BinOp{Left: c.compileExpr(expr.X),
+			Right: &py.UnaryOpExpr{Op: py.Invert, Operand: c.compileExpr(expr.Y)},
 			Op:    py.BitAnd}
 	}
 	panic(fmt.Sprintf("unknown BinaryExpr Op: %v", expr.Op))
 }
 
-func compileBasicLit(expr *ast.BasicLit) py.Expr {
+func (c *Compiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
 	switch expr.Kind {
 	case token.INT, token.FLOAT:
 		return &py.Num{N: expr.Value}
@@ -119,23 +119,23 @@ func compileBasicLit(expr *ast.BasicLit) py.Expr {
 	panic(fmt.Sprintf("unknown BasicLit kind: %v", expr.Kind))
 }
 
-func compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
+func (c *Compiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 	switch expr.Op {
 	case token.NOT:
-		return &py.UnaryOpExpr{Op: py.Not, Operand: compileExpr(expr.X)}
+		return &py.UnaryOpExpr{Op: py.Not, Operand: c.compileExpr(expr.X)}
 	case token.AND: // address of
-		return compileExpr(expr.X)
+		return c.compileExpr(expr.X)
 	case token.ADD:
-		return &py.UnaryOpExpr{Op: py.UAdd, Operand: compileExpr(expr.X)}
+		return &py.UnaryOpExpr{Op: py.UAdd, Operand: c.compileExpr(expr.X)}
 	case token.SUB:
-		return &py.UnaryOpExpr{Op: py.USub, Operand: compileExpr(expr.X)}
+		return &py.UnaryOpExpr{Op: py.USub, Operand: c.compileExpr(expr.X)}
 	case token.XOR:
-		return &py.UnaryOpExpr{Op: py.Invert, Operand: compileExpr(expr.X)}
+		return &py.UnaryOpExpr{Op: py.Invert, Operand: c.compileExpr(expr.X)}
 	}
 	panic(fmt.Sprintf("unknown UnaryExpr: %v", expr.Op))
 }
 
-func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
+func (c *Compiler) compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
 	var clType ast.Expr
 	// Allowed to omit the type if this is an element of another composite literal
 	if expr.Type == nil {
@@ -151,21 +151,21 @@ func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.
 			if _, ok := expr.Elts[0].(*ast.KeyValueExpr); ok {
 				for _, elt := range expr.Elts {
 					kv := elt.(*ast.KeyValueExpr)
-					id := identifier(kv.Key.(*ast.Ident))
+					id := c.identifier(kv.Key.(*ast.Ident))
 					keyword := py.Keyword{
 						Arg:   &id,
-						Value: compileExpr(kv.Value)}
+						Value: c.compileExpr(kv.Value)}
 					keywords = append(keywords, keyword)
 				}
 			} else {
 				args = make([]py.Expr, len(expr.Elts))
 				for i, elt := range expr.Elts {
-					args[i] = compileExpr(elt)
+					args[i] = c.compileExpr(elt)
 				}
 			}
 		}
 		return &py.Call{
-			Func:     compileIdent(typ),
+			Func:     c.compileIdent(typ),
 			Args:     args,
 			Keywords: keywords,
 		}
@@ -173,9 +173,9 @@ func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.
 		elts := make([]py.Expr, len(expr.Elts))
 		for i, elt := range expr.Elts {
 			if cl, ok := elt.(*ast.CompositeLit); ok {
-				elts[i] = compileCompositeLit(cl, typ.Elt)
+				elts[i] = c.compileCompositeLit(cl, typ.Elt)
 			} else {
-				elts[i] = compileExpr(elt)
+				elts[i] = c.compileExpr(elt)
 			}
 		}
 		return &py.List{Elts: elts}
@@ -185,14 +185,14 @@ func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.
 		for i, elt := range expr.Elts {
 			kv := elt.(*ast.KeyValueExpr)
 			if clKey, ok := kv.Key.(*ast.CompositeLit); ok {
-				keys[i] = compileCompositeLit(clKey, typ.Key)
+				keys[i] = c.compileCompositeLit(clKey, typ.Key)
 			} else {
-				keys[i] = compileExpr(kv.Key)
+				keys[i] = c.compileExpr(kv.Key)
 			}
 			if clValue, ok := kv.Value.(*ast.CompositeLit); ok {
-				values[i] = compileCompositeLit(clValue, typ.Value)
+				values[i] = c.compileCompositeLit(clValue, typ.Value)
 			} else {
-				values[i] = compileExpr(kv.Value)
+				values[i] = c.compileExpr(kv.Value)
 			}
 		}
 		return &py.Dict{Keys: keys, Values: values}
@@ -201,14 +201,14 @@ func compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.
 	}
 }
 
-func compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
+func (c *Compiler) compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
 	return &py.Attribute{
-		Value: compileExpr(expr.X),
-		Attr:  identifier(expr.Sel),
+		Value: c.compileExpr(expr.X),
+		Attr:  c.identifier(expr.Sel),
 	}
 }
 
-func compileCallExpr(expr *ast.CallExpr) py.Expr {
+func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 	switch fun := expr.Fun.(type) {
 	case *ast.Ident:
 		switch fun.Name {
@@ -224,13 +224,13 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 				// because in the case when T is not a primitive type,
 				// every element in the list needs to be a different object.
 				return &py.ListComp{
-					Elt: nilValue(t.Elt),
+					Elt: c.nilValue(t.Elt),
 					Generators: []py.Comprehension{
 						py.Comprehension{
 							Target: &py.Name{Id: py.Identifier("_")},
 							Iter: &py.Call{
 								Func: pyRange,
-								Args: []py.Expr{compileExpr(length)},
+								Args: []py.Expr{c.compileExpr(length)},
 							},
 						},
 					},
@@ -242,72 +242,72 @@ func compileCallExpr(expr *ast.CallExpr) py.Expr {
 			}
 		case "new":
 			typ := expr.Args[0]
-			return nilValue(typ)
+			return c.nilValue(typ)
 		}
 	case *ast.ArrayType, *ast.ChanType, *ast.FuncType,
 		*ast.InterfaceType, *ast.MapType, *ast.StructType:
 		// TODO implement type conversions
-		return compileExpr(expr.Args[0])
+		return c.compileExpr(expr.Args[0])
 	}
 	return &py.Call{
-		Func: compileExpr(expr.Fun),
-		Args: compileExprs(expr.Args),
+		Func: c.compileExpr(expr.Fun),
+		Args: c.compileExprs(expr.Args),
 	}
 }
-func compileSliceExpr(slice *ast.SliceExpr) py.Expr {
+func (c *Compiler) compileSliceExpr(slice *ast.SliceExpr) py.Expr {
 	return &py.Subscript{
-		Value: compileExpr(slice.X),
+		Value: c.compileExpr(slice.X),
 		Slice: &py.RangeSlice{
-			Lower: compileExpr(slice.Low),
-			Upper: compileExpr(slice.High),
+			Lower: c.compileExpr(slice.Low),
+			Upper: c.compileExpr(slice.High),
 		}}
 }
 
-func compileIndexExpr(expr *ast.IndexExpr) py.Expr {
+func (c *Compiler) compileIndexExpr(expr *ast.IndexExpr) py.Expr {
 	return &py.Subscript{
-		Value: compileExpr(expr.X),
-		Slice: &py.Index{Value: compileExpr(expr.Index)},
+		Value: c.compileExpr(expr.X),
+		Slice: &py.Index{Value: c.compileExpr(expr.Index)},
 	}
 }
 
-func compileExpr(expr ast.Expr) py.Expr {
+func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
 	}
 	switch e := expr.(type) {
 	case *ast.UnaryExpr:
-		return compileUnaryExpr(e)
+		return c.compileUnaryExpr(e)
 	case *ast.BinaryExpr:
-		return compileBinaryExpr(e)
+		return c.compileBinaryExpr(e)
 	case *ast.Ident:
-		return compileIdent(e)
+		return c.compileIdent(e)
 	case *ast.BasicLit:
-		return compileBasicLit(e)
+		return c.compileBasicLit(e)
 	case *ast.ParenExpr:
-		return compileExpr(e.X)
+		return c.compileExpr(e.X)
 	case *ast.CompositeLit:
-		return compileCompositeLit(e, nil)
+		return c.compileCompositeLit(e, nil)
 	case *ast.SelectorExpr:
-		return compileSelectorExpr(e)
+		return c.compileSelectorExpr(e)
 	case *ast.CallExpr:
-		return compileCallExpr(e)
+		return c.compileCallExpr(e)
 	case *ast.IndexExpr:
-		return compileIndexExpr(e)
+		return c.compileIndexExpr(e)
 	case *ast.SliceExpr:
-		return compileSliceExpr(e)
+		return c.compileSliceExpr(e)
 	}
 	panic(fmt.Sprintf("unknown Expr: %T", expr))
 }
 
-func compileExprs(exprs []ast.Expr) []py.Expr {
+func (c *Compiler) compileExprs(exprs []ast.Expr) []py.Expr {
 	var pyExprs []py.Expr
 	for _, result := range exprs {
-		pyExprs = append(pyExprs, compileExpr(result))
+		pyExprs = append(pyExprs, c.compileExpr(result))
 	}
 	return pyExprs
 }
 
-func makeTuple(pyExprs []py.Expr) py.Expr {
+func (c *Compiler) makeTuple(pyExprs []py.Expr) py.Expr {
 	switch len(pyExprs) {
 	case 0:
 		return nil
@@ -318,6 +318,6 @@ func makeTuple(pyExprs []py.Expr) py.Expr {
 	}
 }
 
-func compileExprsTuple(exprs []ast.Expr) py.Expr {
-	return makeTuple(compileExprs(exprs))
+func (c *Compiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
+	return c.makeTuple(c.compileExprs(exprs))
 }

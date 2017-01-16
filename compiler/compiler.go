@@ -17,15 +17,17 @@ type Module struct {
 	Methods   map[py.Identifier][]*py.FunctionDef
 }
 
-func newModule() *Module {
+type Compiler struct{}
+
+func (c *Compiler) newModule() *Module {
 	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
 }
 
-func identifier(ident *ast.Ident) py.Identifier {
+func (c *Compiler) identifier(ident *ast.Ident) py.Identifier {
 	return py.Identifier(ident.Name)
 }
 
-func fieldType(field *ast.Field) py.Identifier {
+func (c *Compiler) fieldType(field *ast.Field) py.Identifier {
 	var ident *ast.Ident
 	switch e := field.Type.(type) {
 	case *ast.StarExpr:
@@ -35,7 +37,7 @@ func fieldType(field *ast.Field) py.Identifier {
 	default:
 		panic(fmt.Sprintf("unknown field type: %T", field.Type))
 	}
-	return identifier(ident)
+	return c.identifier(ident)
 }
 
 type FuncDecl struct {
@@ -43,7 +45,7 @@ type FuncDecl struct {
 	Def   *py.FunctionDef
 }
 
-func compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
+func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	var recvType py.Identifier
 	pyArgs := py.Arguments{}
 	if decl.Recv != nil {
@@ -53,29 +55,29 @@ func compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 		field := decl.Recv.List[0]
 		name := pySelf
 		if len(field.Names) == 1 {
-			name = identifier(field.Names[0])
+			name = c.identifier(field.Names[0])
 		}
 		pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: name})
-		recvType = fieldType(field)
+		recvType = c.fieldType(field)
 	}
 	for _, param := range decl.Type.Params.List {
 		for _, name := range param.Names {
-			pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: identifier(name)})
+			pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: c.identifier(name)})
 		}
 	}
 	var pyBody []py.Stmt
 	for _, stmt := range decl.Body.List {
-		pyBody = append(pyBody, compileStmt(stmt)...)
+		pyBody = append(pyBody, c.compileStmt(stmt)...)
 	}
 	if len(pyBody) == 0 {
 		pyBody = []py.Stmt{&py.Pass{}}
 	}
 	return FuncDecl{
 		Class: recvType,
-		Def:   &py.FunctionDef{Name: identifier(decl.Name), Args: pyArgs, Body: pyBody}}
+		Def:   &py.FunctionDef{Name: c.identifier(decl.Name), Args: pyArgs, Body: pyBody}}
 }
 
-func nilValue(typ ast.Expr) py.Expr {
+func (c *Compiler) nilValue(typ ast.Expr) py.Expr {
 	switch t := typ.(type) {
 	case *ast.StarExpr:
 		return &py.NameConstant{Value: py.None}
@@ -88,10 +90,10 @@ func nilValue(typ ast.Expr) py.Expr {
 		case "int":
 			return &py.Num{N: "0"}
 		default:
-			return &py.Call{Func: compileExpr(t)}
+			return &py.Call{Func: c.compileExpr(t)}
 		}
 	case *ast.SelectorExpr:
-		return &py.Call{Func: compileExpr(t)}
+		return &py.Call{Func: c.compileExpr(t)}
 	case *ast.ArrayType:
 		return &py.List{}
 	default:
@@ -99,10 +101,10 @@ func nilValue(typ ast.Expr) py.Expr {
 	}
 }
 
-func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
+func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 	if len(typ.Fields.List) == 0 {
 		return &py.ClassDef{
-			Name:          identifier(ident),
+			Name:          c.identifier(ident),
 			Bases:         nil,
 			Keywords:      nil,
 			Body:          []py.Stmt{&py.Pass{}},
@@ -113,9 +115,9 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 	var defaults []py.Expr
 	for _, field := range typ.Fields.List {
 		for _, name := range field.Names {
-			arg := py.Arg{Arg: identifier(name)}
+			arg := py.Arg{Arg: c.identifier(name)}
 			args = append(args, arg)
-			dflt := nilValue(field.Type)
+			dflt := c.nilValue(field.Type)
 			defaults = append(defaults, dflt)
 		}
 	}
@@ -126,10 +128,10 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 				Targets: []py.Expr{
 					&py.Attribute{
 						Value: &py.Name{Id: pySelf},
-						Attr:  identifier(name),
+						Attr:  c.identifier(name),
 					},
 				},
-				Value: compileIdent(name),
+				Value: c.compileIdent(name),
 			}
 			body = append(body, assign)
 		}
@@ -140,7 +142,7 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 		Body: body,
 	}
 	return &py.ClassDef{
-		Name:          identifier(ident),
+		Name:          c.identifier(ident),
 		Bases:         nil,
 		Keywords:      nil,
 		Body:          []py.Stmt{initMethod},
@@ -148,68 +150,68 @@ func compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
 	}
 }
 
-func compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
+func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 	switch t := spec.Type.(type) {
 	case *ast.StructType:
-		return compileStructType(spec.Name, t)
+		return c.compileStructType(spec.Name, t)
 	case *ast.Ident:
-		return &py.Assign{Targets: []py.Expr{compileIdent(spec.Name)}, Value: compileIdent(t)}
+		return &py.Assign{Targets: []py.Expr{c.compileIdent(spec.Name)}, Value: c.compileIdent(t)}
 	default:
 		panic(fmt.Sprintf("unknown TypeSpec: %T", spec.Type))
 	}
 }
 
-func compileImportSpec(spec *ast.ImportSpec, module *Module) {
+func (c *Compiler) compileImportSpec(spec *ast.ImportSpec, module *Module) {
 	//TODO
 }
 
-func compileGenDecl(decl *ast.GenDecl, module *Module) {
+func (c *Compiler) compileGenDecl(decl *ast.GenDecl, module *Module) {
 	for _, spec := range decl.Specs {
 		switch s := spec.(type) {
 		case *ast.TypeSpec:
-			compiled := compileTypeSpec(s)
+			compiled := c.compileTypeSpec(s)
 			if classDef, ok := compiled.(*py.ClassDef); ok {
 				module.Classes = append(module.Classes, classDef)
 			} else {
 				module.Types = append(module.Types, compiled)
 			}
 		case *ast.ImportSpec:
-			compileImportSpec(s, module)
+			c.compileImportSpec(s, module)
 		case *ast.ValueSpec:
-			module.Values = append(module.Values, compileValueSpec(s)...)
+			module.Values = append(module.Values, c.compileValueSpec(s)...)
 		default:
 			panic(fmt.Sprintf("unknown Spec: %T", s))
 		}
 	}
 }
 
-func compileDecl(decl ast.Decl, module *Module) {
+func (c *Compiler) compileDecl(decl ast.Decl, module *Module) {
 	switch d := decl.(type) {
 	case *ast.FuncDecl:
-		funcDecl := compileFuncDecl(d)
+		funcDecl := c.compileFuncDecl(d)
 		if funcDecl.Class != py.Identifier("") {
 			module.Methods[funcDecl.Class] = append(module.Methods[funcDecl.Class], funcDecl.Def)
 		} else {
 			module.Functions = append(module.Functions, funcDecl.Def)
 		}
 	case *ast.GenDecl:
-		compileGenDecl(d, module)
+		c.compileGenDecl(d, module)
 	default:
 		panic(fmt.Sprintf("unknown Decl: %T", decl))
 	}
 
 }
 
-func compileFile(file *ast.File, module *Module) {
+func (c *Compiler) compileFile(file *ast.File, module *Module) {
 	for _, decl := range file.Decls {
-		compileDecl(decl, module)
+		c.compileDecl(decl, module)
 	}
 }
 
-func CompilePackage(pkg *ast.Package) *py.Module {
+func (c *Compiler) CompilePackage(pkg *ast.Package) *py.Module {
 	module := &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
 	for _, file := range pkg.Files {
-		compileFile(file, module)
+		c.compileFile(file, module)
 	}
 	pyModule := &py.Module{}
 	pyModule.Body = append(pyModule.Body, module.Values...)

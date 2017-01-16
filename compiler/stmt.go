@@ -7,10 +7,10 @@ import (
 	"go/token"
 )
 
-func compileStmts(stmts []ast.Stmt) []py.Stmt {
+func (c *Compiler) compileStmts(stmts []ast.Stmt) []py.Stmt {
 	var pyStmts []py.Stmt
 	for _, blockStmt := range stmts {
-		pyStmts = append(pyStmts, compileStmt(blockStmt)...)
+		pyStmts = append(pyStmts, c.compileStmt(blockStmt)...)
 	}
 	return pyStmts
 }
@@ -23,47 +23,47 @@ var (
 	pyKeyError  = &py.Name{Id: py.Identifier("KeyError")}
 )
 
-func isBlank(expr ast.Expr) bool {
+func (c *Compiler) isBlank(expr ast.Expr) bool {
 	ident, ok := expr.(*ast.Ident)
 	return ok && ident.Name == "_"
 }
 
-func compileRangeStmt(stmt *ast.RangeStmt) py.Stmt {
+func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) py.Stmt {
 	if stmt.Key != nil && stmt.Value == nil {
 		return &py.For{
-			Target: compileExpr(stmt.Key),
+			Target: c.compileExpr(stmt.Key),
 			Iter: &py.Call{
 				Func: pyRange,
 				Args: []py.Expr{
 					&py.Call{
 						Func: pyLen,
-						Args: []py.Expr{compileExpr(stmt.X)},
+						Args: []py.Expr{c.compileExpr(stmt.X)},
 					},
 				}},
-			Body: compileStmt(stmt.Body),
+			Body: c.compileStmt(stmt.Body),
 		}
 	}
 	if stmt.Key != nil && stmt.Value != nil {
-		if isBlank(stmt.Key) {
+		if c.isBlank(stmt.Key) {
 			return &py.For{
-				Target: compileExpr(stmt.Value),
-				Iter:   compileExpr(stmt.X),
-				Body:   compileStmt(stmt.Body),
+				Target: c.compileExpr(stmt.Value),
+				Iter:   c.compileExpr(stmt.X),
+				Body:   c.compileStmt(stmt.Body),
 			}
 		}
 		return &py.For{
-			Target: &py.Tuple{Elts: []py.Expr{compileExpr(stmt.Key), compileExpr(stmt.Value)}},
+			Target: &py.Tuple{Elts: []py.Expr{c.compileExpr(stmt.Key), c.compileExpr(stmt.Value)}},
 			Iter: &py.Call{
 				Func: pyEnumerate,
-				Args: []py.Expr{compileExpr(stmt.X)},
+				Args: []py.Expr{c.compileExpr(stmt.X)},
 			},
-			Body: compileStmt(stmt.Body),
+			Body: c.compileStmt(stmt.Body),
 		}
 	}
 	panic("nil key in range for")
 }
 
-func compileIncDecStmt(s *ast.IncDecStmt) py.Stmt {
+func (c *Compiler) compileIncDecStmt(s *ast.IncDecStmt) py.Stmt {
 	var op py.Operator
 	if s.Tok == token.INC {
 		op = py.Add
@@ -71,13 +71,13 @@ func compileIncDecStmt(s *ast.IncDecStmt) py.Stmt {
 		op = py.Sub
 	}
 	return &py.AugAssign{
-		Target: compileExpr(s.X),
+		Target: c.compileExpr(s.X),
 		Value:  &py.Num{N: "1"},
 		Op:     op,
 	}
 }
 
-func compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
+func (c *Compiler) compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 	var targets []py.Expr
 	var values []py.Expr
 
@@ -92,13 +92,13 @@ func compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 	// var x, y int = f()     x, y = f()
 
 	for i, ident := range spec.Names {
-		target := compileIdent(ident)
+		target := c.compileIdent(ident)
 
 		if len(spec.Values) == 0 {
-			value := nilValue(spec.Type)
+			value := c.nilValue(spec.Type)
 			values = append(values, value)
 		} else if i < len(spec.Values) {
-			value := compileExpr(spec.Values[i])
+			value := c.compileExpr(spec.Values[i])
 			values = append(values, value)
 		}
 
@@ -107,21 +107,21 @@ func compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 	return []py.Stmt{
 		&py.Assign{
 			Targets: targets,
-			Value:   makeTuple(values),
+			Value:   c.makeTuple(values),
 		},
 	}
 }
 
-func compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
+func (c *Compiler) compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 	var stmts []py.Stmt
 	genDecl := s.Decl.(*ast.GenDecl)
 	for _, spec := range genDecl.Specs {
 		var compiled []py.Stmt
 		switch spec := spec.(type) {
 		case *ast.ValueSpec:
-			compiled = compileValueSpec(spec)
+			compiled = c.compileValueSpec(spec)
 		case *ast.TypeSpec:
-			compiled = []py.Stmt{compileTypeSpec(spec)}
+			compiled = []py.Stmt{c.compileTypeSpec(spec)}
 		default:
 			panic(fmt.Sprintf("unknown Spec: %T", spec))
 		}
@@ -130,7 +130,7 @@ func compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 	return stmts
 }
 
-func augmentedOp(t token.Token) py.Operator {
+func (c *Compiler) augmentedOp(t token.Token) py.Operator {
 	switch t {
 	case token.ADD_ASSIGN: // +=
 		return py.Add
@@ -158,32 +158,32 @@ func augmentedOp(t token.Token) py.Operator {
 	}
 }
 
-func compileAssignStmt(s *ast.AssignStmt) py.Stmt {
+func (c *Compiler) compileAssignStmt(s *ast.AssignStmt) py.Stmt {
 	if s.Tok == token.ASSIGN || s.Tok == token.DEFINE {
 		return &py.Assign{
-			Targets: compileExprs(s.Lhs),
-			Value:   compileExprsTuple(s.Rhs),
+			Targets: c.compileExprs(s.Lhs),
+			Value:   c.compileExprsTuple(s.Rhs),
 		}
 	}
 	// x &^= y becomes x &= ~y
 	if s.Tok == token.AND_NOT_ASSIGN {
 		return &py.AugAssign{
-			Target: compileExpr(s.Lhs[0]),
+			Target: c.compileExpr(s.Lhs[0]),
 			Value: &py.UnaryOpExpr{
 				Op:      py.Invert,
-				Operand: compileExpr(s.Rhs[0]),
+				Operand: c.compileExpr(s.Rhs[0]),
 			},
 			Op: py.BitAnd,
 		}
 	}
 	return &py.AugAssign{
-		Target: compileExpr(s.Lhs[0]),
-		Value:  compileExpr(s.Rhs[0]),
-		Op:     augmentedOp(s.Tok),
+		Target: c.compileExpr(s.Lhs[0]),
+		Value:  c.compileExpr(s.Rhs[0]),
+		Op:     c.augmentedOp(s.Tok),
 	}
 }
 
-func compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
+func (c *Compiler) compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
 	var tests []py.Expr
 	for _, expr := range caseClause.List {
 		var test py.Expr
@@ -191,9 +191,9 @@ func compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
 			test = &py.Compare{
 				Left:        tag,
 				Ops:         []py.CmpOp{py.Eq},
-				Comparators: []py.Expr{compileExpr(expr)}}
+				Comparators: []py.Expr{c.compileExpr(expr)}}
 		} else {
-			test = compileExpr(expr)
+			test = c.compileExpr(expr)
 		}
 		tests = append(tests, test)
 	}
@@ -205,15 +205,15 @@ func compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
 	return &py.BoolOpExpr{Op: py.Or, Values: tests}
 }
 
-func compileSwitchStmt(s *ast.SwitchStmt) []py.Stmt {
+func (c *Compiler) compileSwitchStmt(s *ast.SwitchStmt) []py.Stmt {
 	var stmts []py.Stmt
 	if s.Init != nil {
-		stmts = append(stmts, compileStmt(s.Init)...)
+		stmts = append(stmts, c.compileStmt(s.Init)...)
 	}
 	var tag py.Expr
 	if s.Tag != nil {
 		tag = &py.Name{Id: py.Identifier("tag")}
-		assignTag := &py.Assign{Targets: []py.Expr{tag}, Value: compileExpr(s.Tag)}
+		assignTag := &py.Assign{Targets: []py.Expr{tag}, Value: c.compileExpr(s.Tag)}
 		stmts = append(stmts, assignTag)
 	}
 
@@ -222,13 +222,13 @@ func compileSwitchStmt(s *ast.SwitchStmt) []py.Stmt {
 	var defaultBody []py.Stmt
 	for _, stmt := range s.Body.List {
 		caseClause := stmt.(*ast.CaseClause)
-		test := compileCaseClauseTest(caseClause, tag)
+		test := c.compileCaseClauseTest(caseClause, tag)
 		if test == nil {
 			// no test => default clause
-			defaultBody = compileStmts(caseClause.Body)
+			defaultBody = c.compileStmts(caseClause.Body)
 			continue
 		}
-		ifStmt := &py.If{Test: test, Body: compileStmts(caseClause.Body)}
+		ifStmt := &py.If{Test: test, Body: c.compileStmts(caseClause.Body)}
 		if firstIfStmt == nil {
 			firstIfStmt = ifStmt
 			lastIfStmt = ifStmt
@@ -247,17 +247,17 @@ func compileSwitchStmt(s *ast.SwitchStmt) []py.Stmt {
 	return stmts
 }
 
-func compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
+func (c *Compiler) compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 	var stmts []py.Stmt
 
 	if s.Init != nil {
-		stmts = append(stmts, compileStmt(s.Init)...)
+		stmts = append(stmts, c.compileStmt(s.Init)...)
 	}
 	var tag py.Expr
 	var typeAssert ast.Expr
 	switch s := s.Assign.(type) {
 	case *ast.AssignStmt:
-		tag = compileExpr(s.Lhs[0])
+		tag = c.compileExpr(s.Lhs[0])
 		typeAssert = s.Rhs[0]
 	case *ast.ExprStmt:
 		tag = &py.Name{Id: py.Identifier("tag")}
@@ -266,7 +266,7 @@ func compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 		panic(fmt.Sprintf("Unknown statement type in type switch assign: %T", s))
 	}
 	expr := typeAssert.(*ast.TypeAssertExpr).X
-	tagValue := &py.Call{Func: pyType, Args: []py.Expr{compileExpr(expr)}}
+	tagValue := &py.Call{Func: pyType, Args: []py.Expr{c.compileExpr(expr)}}
 	assignTag := &py.Assign{Targets: []py.Expr{tag}, Value: tagValue}
 	stmts = append(stmts, assignTag)
 
@@ -275,13 +275,13 @@ func compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 	var defaultBody []py.Stmt
 	for _, stmt := range s.Body.List {
 		caseClause := stmt.(*ast.CaseClause)
-		test := compileCaseClauseTest(caseClause, tag)
+		test := c.compileCaseClauseTest(caseClause, tag)
 		if test == nil {
 			// no test => default clause
-			defaultBody = compileStmts(caseClause.Body)
+			defaultBody = c.compileStmts(caseClause.Body)
 			continue
 		}
-		ifStmt := &py.If{Test: test, Body: compileStmts(caseClause.Body)}
+		ifStmt := &py.If{Test: test, Body: c.compileStmts(caseClause.Body)}
 		if firstIfStmt == nil {
 			firstIfStmt = ifStmt
 			lastIfStmt = ifStmt
@@ -300,20 +300,20 @@ func compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 	return stmts
 }
 
-func compileIfStmt(s *ast.IfStmt) []py.Stmt {
+func (c *Compiler) compileIfStmt(s *ast.IfStmt) []py.Stmt {
 	var stmts []py.Stmt
 	if s.Init != nil {
-		stmts = append(stmts, compileStmt(s.Init)...)
+		stmts = append(stmts, c.compileStmt(s.Init)...)
 	}
-	ifStmt := &py.If{Test: compileExpr(s.Cond), Body: compileStmt(s.Body)}
+	ifStmt := &py.If{Test: c.compileExpr(s.Cond), Body: c.compileStmt(s.Body)}
 	if s.Else != nil {
-		ifStmt.Orelse = compileStmt(s.Else)
+		ifStmt.Orelse = c.compileStmt(s.Else)
 	}
 	stmts = append(stmts, ifStmt)
 	return stmts
 }
 
-func compileBranchStmt(s *ast.BranchStmt) py.Stmt {
+func (c *Compiler) compileBranchStmt(s *ast.BranchStmt) py.Stmt {
 	switch s.Tok {
 	case token.BREAK:
 		return &py.Break{}
@@ -324,24 +324,24 @@ func compileBranchStmt(s *ast.BranchStmt) py.Stmt {
 	}
 }
 
-func compileForStmt(s *ast.ForStmt) []py.Stmt {
+func (c *Compiler) compileForStmt(s *ast.ForStmt) []py.Stmt {
 	var stmts []py.Stmt
-	body := compileStmt(s.Body)
+	body := c.compileStmt(s.Body)
 	if s.Post != nil {
-		body = append(compileStmt(s.Body), compileStmt(s.Post)...)
+		body = append(c.compileStmt(s.Body), c.compileStmt(s.Post)...)
 	}
 	if s.Init != nil {
-		stmts = compileStmt(s.Init)
+		stmts = c.compileStmt(s.Init)
 	}
 	var test py.Expr = pyTrue
 	if s.Cond != nil {
-		test = compileExpr(s.Cond)
+		test = c.compileExpr(s.Cond)
 	}
 	stmts = append(stmts, &py.While{Test: test, Body: body})
 	return stmts
 }
 
-func compileExprToStmt(e ast.Expr) []py.Stmt {
+func (c *Compiler) compileExprToStmt(e ast.Expr) []py.Stmt {
 	switch e := e.(type) {
 	case *ast.CallExpr:
 		switch fun := e.Fun.(type) {
@@ -354,8 +354,8 @@ func compileExprToStmt(e ast.Expr) []py.Stmt {
 							&py.Delete{
 								Targets: []py.Expr{
 									&py.Subscript{
-										Value: compileExpr(e.Args[0]),
-										Slice: &py.Index{compileExpr(e.Args[1])},
+										Value: c.compileExpr(e.Args[0]),
+										Slice: &py.Index{c.compileExpr(e.Args[1])},
 									},
 								},
 							},
@@ -374,35 +374,35 @@ func compileExprToStmt(e ast.Expr) []py.Stmt {
 	return nil
 }
 
-func compileStmt(stmt ast.Stmt) []py.Stmt {
+func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 	switch s := stmt.(type) {
 	case *ast.ReturnStmt:
-		return []py.Stmt{&py.Return{Value: compileExprsTuple(s.Results)}}
+		return []py.Stmt{&py.Return{Value: c.compileExprsTuple(s.Results)}}
 	case *ast.ForStmt:
-		return compileForStmt(s)
+		return c.compileForStmt(s)
 	case *ast.BlockStmt:
-		return compileStmts(s.List)
+		return c.compileStmts(s.List)
 	case *ast.AssignStmt:
-		return []py.Stmt{compileAssignStmt(s)}
+		return []py.Stmt{c.compileAssignStmt(s)}
 	case *ast.ExprStmt:
-		if compiled := compileExprToStmt(s.X); compiled != nil {
+		if compiled := c.compileExprToStmt(s.X); compiled != nil {
 			return compiled
 		}
-		return []py.Stmt{&py.ExprStmt{Value: compileExpr(s.X)}}
+		return []py.Stmt{&py.ExprStmt{Value: c.compileExpr(s.X)}}
 	case *ast.RangeStmt:
-		return []py.Stmt{compileRangeStmt(s)}
+		return []py.Stmt{c.compileRangeStmt(s)}
 	case *ast.IfStmt:
-		return compileIfStmt(s)
+		return c.compileIfStmt(s)
 	case *ast.IncDecStmt:
-		return []py.Stmt{compileIncDecStmt(s)}
+		return []py.Stmt{c.compileIncDecStmt(s)}
 	case *ast.DeclStmt:
-		return compileDeclStmt(s)
+		return c.compileDeclStmt(s)
 	case *ast.SwitchStmt:
-		return compileSwitchStmt(s)
+		return c.compileSwitchStmt(s)
 	case *ast.TypeSwitchStmt:
-		return compileTypeSwitchStmt(s)
+		return c.compileTypeSwitchStmt(s)
 	case *ast.BranchStmt:
-		return []py.Stmt{compileBranchStmt(s)}
+		return []py.Stmt{c.compileBranchStmt(s)}
 	case *ast.EmptyStmt:
 		return []py.Stmt{}
 	}

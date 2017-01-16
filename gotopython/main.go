@@ -56,7 +56,8 @@ func main() {
 	}
 
 	for _, pkg := range pkgs {
-		module := compiler.CompilePackage(pkg)
+		c := &compiler.Compiler{}
+		module := c.CompilePackage(pkg)
 		if *dumpPythonAST {
 			spew.Dump(module)
 		}
