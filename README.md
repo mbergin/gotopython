@@ -77,8 +77,8 @@ The parts of the Go language spec that are implemented are:
 | Built-in function | Implemented |
 |-------------------| ------------|
 | `close`           |             |
-| `len`             | 1           |
-| `cap`             |             |
+| `len`             | ✓           |
+| `cap`             | 1           |
 | `new`             | ✓           |
 | `make([]T)`       | ✓           |
 | `make(map[T]U)`   | ✓           |
@@ -94,7 +94,7 @@ The parts of the Go language spec that are implemented are:
 | `print`           |             |
 | `println`         |             |
 
-1. Returns a character count for strings -- it should return a byte count. Works for slice, array, map.
+1. `cap` is translated to `len`
 
 | Language feature     | Implemented |
 |----------------------|-------------|

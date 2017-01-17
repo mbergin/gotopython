@@ -254,7 +254,7 @@ func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("real")}
 		case "imag":
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("imag")}
-		case "len":
+		case "len", "cap":
 			t := c.TypeOf(expr.Args[0])
 			switch {
 			case isString(t):

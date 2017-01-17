@@ -261,6 +261,7 @@ var exprTests = []struct {
 			},
 		},
 	}},
+	{"cap(xs)", &py.Call{Func: pyLen, Args: []py.Expr{xs}}},
 	{"new(T)", &py.Call{Func: T}},
 	{"new(int)", &py.Num{N: "0"}},
 	{"complex(1.0, 2.0)", &py.Call{Func: pyComplex, Args: []py.Expr{&py.Num{N: "1.0"}, &py.Num{N: "2.0"}}}},
