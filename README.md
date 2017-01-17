@@ -86,9 +86,9 @@ The parts of the Go language spec that are implemented are:
 | `append`          |             |
 | `copy`            |             |
 | `delete`          | ✓           |
-| `complex`         |             |
-| `real`            |             |
-| `imag`            |             |
+| `complex`         | ✓           |
+| `real`            | ✓           |
+| `imag`            | ✓           |
 | `panic`           |             |
 | `recover`         |             |
 | `print`           |             |

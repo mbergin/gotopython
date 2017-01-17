@@ -15,14 +15,6 @@ func (c *Compiler) compileStmts(stmts []ast.Stmt) []py.Stmt {
 	return pyStmts
 }
 
-var (
-	pyRange     = &py.Name{Id: py.Identifier("range")}
-	pyLen       = &py.Name{Id: py.Identifier("len")}
-	pyEnumerate = &py.Name{Id: py.Identifier("enumerate")}
-	pyType      = &py.Name{Id: py.Identifier("type")}
-	pyKeyError  = &py.Name{Id: py.Identifier("KeyError")}
-)
-
 func (c *Compiler) isBlank(expr ast.Expr) bool {
 	ident, ok := expr.(*ast.Ident)
 	return ok && ident.Name == "_"

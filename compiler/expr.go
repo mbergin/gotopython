@@ -8,13 +8,6 @@ import (
 	"strings"
 )
 
-var (
-	pyTrue        = &py.NameConstant{Value: py.True}
-	pyFalse       = &py.NameConstant{Value: py.False}
-	pyNone        = &py.NameConstant{Value: py.None}
-	pyEmptyString = &py.Str{S: `""`}
-)
-
 func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	switch ident.Name {
 	case "true":
@@ -246,6 +239,15 @@ func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 		case "new":
 			typ := expr.Args[0]
 			return c.nilValue(typ)
+		case "complex":
+			return &py.Call{
+				Func: pyComplex,
+				Args: c.compileExprs(expr.Args),
+			}
+		case "real":
+			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("real")}
+		case "imag":
+			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("imag")}
 		}
 	case *ast.ArrayType, *ast.ChanType, *ast.FuncType,
 		*ast.InterfaceType, *ast.MapType, *ast.StructType:

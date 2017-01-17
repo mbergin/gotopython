@@ -256,6 +256,13 @@ var exprTests = []struct {
 	{"len(xs)", &py.Call{Func: pyLen, Args: []py.Expr{xs}}},
 	{"new(T)", &py.Call{Func: T}},
 	{"new(int)", &py.Num{N: "0"}},
+	{"complex(1.0, 2.0)", &py.Call{Func: pyComplex, Args: []py.Expr{&py.Num{N: "1.0"}, &py.Num{N: "2.0"}}}},
+	{"real(1+2i)", &py.Attribute{
+		Attr:  py.Identifier("real"),
+		Value: &py.BinOp{Left: &py.Num{N: "1"}, Op: py.Add, Right: &py.Num{N: "2j"}}}},
+	{"imag(1+2i)", &py.Attribute{
+		Attr:  py.Identifier("imag"),
+		Value: &py.BinOp{Left: &py.Num{N: "1"}, Op: py.Add, Right: &py.Num{N: "2j"}}}},
 }
 
 var sp = spew.NewDefaultConfig()
@@ -305,6 +312,8 @@ func TestExpr(t *testing.T) {
 		pyExpr := c.compileExpr(goExpr)
 		if !reflect.DeepEqual(pyExpr, test.python) {
 			t.Errorf("\nwant %s\ngot  %s", pythonExprCode(test.python), pythonExprCode(pyExpr))
+			spew.Dump(test.python)
+			spew.Dump(pyExpr)
 		}
 	}
 }
