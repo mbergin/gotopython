@@ -5,6 +5,7 @@ import (
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"strings"
 )
 
@@ -204,6 +205,11 @@ func (c *Compiler) compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
 	}
 }
 
+func isString(typ types.Type) bool {
+	t, ok := typ.Underlying().(*types.Basic)
+	return ok && t.Info()&types.IsString != 0
+}
+
 func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 	switch fun := expr.Fun.(type) {
 	case *ast.Ident:
@@ -248,6 +254,25 @@ func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("real")}
 		case "imag":
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("imag")}
+		case "len":
+			t := c.TypeOf(expr.Args[0])
+			switch {
+			case isString(t):
+				return &py.Call{
+					Func: pyLen,
+					Args: []py.Expr{
+						&py.Call{
+							Func: &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("encode")},
+							Args: []py.Expr{&py.Str{S: `"utf-8"`}},
+						},
+					},
+				}
+			default:
+				return &py.Call{
+					Func: pyLen,
+					Args: c.compileExprs(expr.Args),
+				}
+			}
 		}
 	case *ast.ArrayType, *ast.ChanType, *ast.FuncType,
 		*ast.InterfaceType, *ast.MapType, *ast.StructType:

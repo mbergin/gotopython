@@ -251,9 +251,16 @@ var exprTests = []struct {
 					Args: []py.Expr{x}},
 			}}}},
 	{"make(map[T]U)", &py.Dict{}},
-	// TODO this should return a byte count for strings --
-	// len() in Python returns a character count
 	{"len(xs)", &py.Call{Func: pyLen, Args: []py.Expr{xs}}},
+	{`len("")`, &py.Call{
+		Func: pyLen,
+		Args: []py.Expr{
+			&py.Call{
+				Func: &py.Attribute{Value: pyEmptyString, Attr: py.Identifier("encode")},
+				Args: []py.Expr{&py.Str{S: `"utf-8"`}},
+			},
+		},
+	}},
 	{"new(T)", &py.Call{Func: T}},
 	{"new(int)", &py.Num{N: "0"}},
 	{"complex(1.0, 2.0)", &py.Call{Func: pyComplex, Args: []py.Expr{&py.Num{N: "1.0"}, &py.Num{N: "2.0"}}}},
