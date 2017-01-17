@@ -210,14 +210,45 @@ func isString(typ types.Type) bool {
 	return ok && t.Info()&types.IsString != 0
 }
 
+var builtin = struct {
+	append  types.Object
+	cap     types.Object
+	close   types.Object
+	complex types.Object
+	copy    types.Object
+	delete  types.Object
+	imag    types.Object
+	len     types.Object
+	make    types.Object
+	new     types.Object
+	panic   types.Object
+	print   types.Object
+	println types.Object
+	real    types.Object
+	recover types.Object
+}{
+	append:  types.Universe.Lookup("append"),
+	cap:     types.Universe.Lookup("cap"),
+	close:   types.Universe.Lookup("close"),
+	complex: types.Universe.Lookup("complex"),
+	copy:    types.Universe.Lookup("copy"),
+	delete:  types.Universe.Lookup("delete"),
+	imag:    types.Universe.Lookup("imag"),
+	len:     types.Universe.Lookup("len"),
+	make:    types.Universe.Lookup("make"),
+	new:     types.Universe.Lookup("new"),
+	panic:   types.Universe.Lookup("panic"),
+	print:   types.Universe.Lookup("print"),
+	println: types.Universe.Lookup("println"),
+	real:    types.Universe.Lookup("real"),
+	recover: types.Universe.Lookup("recover"),
+}
+
 func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 	switch fun := expr.Fun.(type) {
 	case *ast.Ident:
-		switch fun.Name {
-		// TODO need to use proper name resolution to make sure these
-		// are really calls to builtin functions and not user-defined
-		// functions that hide them.
-		case "make":
+		switch c.ObjectOf(fun) {
+		case builtin.make:
 			typ := expr.Args[0]
 			switch t := typ.(type) {
 			case *ast.ArrayType:
@@ -242,19 +273,19 @@ func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 			default:
 				panic("bad type in make()")
 			}
-		case "new":
+		case builtin.new:
 			typ := expr.Args[0]
 			return c.nilValue(typ)
-		case "complex":
+		case builtin.complex:
 			return &py.Call{
 				Func: pyComplex,
 				Args: c.compileExprs(expr.Args),
 			}
-		case "real":
+		case builtin.real:
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("real")}
-		case "imag":
+		case builtin.imag:
 			return &py.Attribute{Value: c.compileExpr(expr.Args[0]), Attr: py.Identifier("imag")}
-		case "len", "cap":
+		case builtin.len, builtin.cap:
 			t := c.TypeOf(expr.Args[0])
 			switch {
 			case isString(t):
