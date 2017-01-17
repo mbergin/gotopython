@@ -45,7 +45,7 @@ func (w *Writer) writeStmt(stmt Stmt) {
 	case *Pass:
 		w.write("pass")
 	case *ExprStmt:
-		w.writeExpr(s.Value)
+		w.WriteExpr(s.Value)
 	case *If:
 		w.ifStmt(s)
 	case *AugAssign:
@@ -68,7 +68,7 @@ func (w *Writer) writeStmt(stmt Stmt) {
 func (w *Writer) ret(s *Return) {
 	if s.Value != nil {
 		w.write("return ")
-		w.writeExpr(s.Value)
+		w.WriteExpr(s.Value)
 	} else {
 		w.write("return")
 	}
@@ -80,7 +80,7 @@ func (w *Writer) del(s *Delete) {
 		if i > 0 {
 			w.comma()
 		}
-		w.writeExpr(target)
+		w.WriteExpr(target)
 	}
 }
 
@@ -89,15 +89,15 @@ func (w *Writer) assign(s *Assign) {
 		if i > 0 {
 			w.comma()
 		}
-		w.writeExpr(target)
+		w.WriteExpr(target)
 	}
 	w.write(" = ")
-	w.writeExpr(s.Value)
+	w.WriteExpr(s.Value)
 }
 
 func (w *Writer) while(s *While) {
 	w.write("while ")
-	w.writeExpr(s.Test)
+	w.WriteExpr(s.Test)
 	w.write(":")
 	w.indent()
 	w.writeStmts(s.Body)
@@ -106,7 +106,7 @@ func (w *Writer) while(s *While) {
 
 func (w *Writer) ifStmt(s *If) {
 	w.write("if ")
-	w.writeExpr(s.Test)
+	w.WriteExpr(s.Test)
 	w.write(":")
 	w.indent()
 	w.writeStmts(s.Body)
@@ -126,9 +126,9 @@ func (w *Writer) ifStmt(s *If) {
 
 func (w *Writer) forLoop(s *For) {
 	w.write("for ")
-	w.writeExpr(s.Target)
+	w.WriteExpr(s.Target)
 	w.write(" in ")
-	w.writeExpr(s.Iter)
+	w.WriteExpr(s.Iter)
 	w.write(":")
 	w.indent()
 	for i, bodyStmt := range s.Body {
@@ -149,7 +149,7 @@ func (w *Writer) try(s *Try) {
 		w.write("except")
 		if handler.Typ != nil {
 			w.write(" ")
-			w.writeExpr(handler.Typ)
+			w.WriteExpr(handler.Typ)
 			if handler.Name != Identifier("") {
 				w.write(" as ")
 				w.identifier(handler.Name)
@@ -169,12 +169,12 @@ func (w *Writer) try(s *Try) {
 }
 
 func (w *Writer) augAssign(s *AugAssign) {
-	w.writeExpr(s.Target)
+	w.WriteExpr(s.Target)
 	w.write(" ")
 	w.writeOp(s.Op)
 	w.write("=")
 	w.write(" ")
-	w.writeExpr(s.Value)
+	w.WriteExpr(s.Value)
 }
 
 func (w *Writer) call(e *Call) {
@@ -244,6 +244,8 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 		w.nameConstant(e)
 	case *List:
 		w.list(e)
+	case *Dict:
+		w.dict(e)
 	case *Subscript:
 		w.writeExprPrec(e.Value, prec)
 		w.write("[")
@@ -265,15 +267,15 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 
 func (w *Writer) listComp(e *ListComp) {
 	w.write("[")
-	w.writeExpr(e.Elt)
+	w.WriteExpr(e.Elt)
 	for _, g := range e.Generators {
 		w.write(" for ")
-		w.writeExpr(g.Target)
+		w.WriteExpr(g.Target)
 		w.write(" in ")
-		w.writeExpr(g.Iter)
+		w.WriteExpr(g.Iter)
 		for _, ifExpr := range g.Ifs {
 			w.write(" if ")
-			w.writeExpr(ifExpr)
+			w.WriteExpr(ifExpr)
 		}
 	}
 	w.write("]")
@@ -307,14 +309,14 @@ func (w *Writer) unaryOpExpr(e *UnaryOpExpr) {
 func (w *Writer) slice(s Slice) {
 	switch s := s.(type) {
 	case *Index:
-		w.writeExpr(s.Value)
+		w.WriteExpr(s.Value)
 	case *RangeSlice:
 		if s.Lower != nil {
-			w.writeExpr(s.Lower)
+			w.WriteExpr(s.Lower)
 		}
 		w.write(":")
 		if s.Upper != nil {
-			w.writeExpr(s.Upper)
+			w.WriteExpr(s.Upper)
 		}
 	default:
 		panic(fmt.Sprintf("unknown Slice: %T", s))
@@ -332,6 +334,19 @@ func (w *Writer) list(l *List) {
 	w.write("]")
 }
 
+func (w *Writer) dict(d *Dict) {
+	w.write("{")
+	for i := range d.Keys {
+		if i > 0 {
+			w.comma()
+		}
+		w.writeExprPrec(d.Keys[i], d.Precedence())
+		w.write(": ")
+		w.writeExprPrec(d.Values[i], d.Precedence())
+	}
+	w.write("}")
+}
+
 func (w *Writer) nameConstant(nc *NameConstant) {
 	switch nc.Value {
 	case None:
@@ -345,7 +360,7 @@ func (w *Writer) nameConstant(nc *NameConstant) {
 	}
 }
 
-func (w *Writer) writeExpr(expr Expr) {
+func (w *Writer) WriteExpr(expr Expr) {
 	w.writeExprPrec(expr, 0)
 }
 
@@ -417,7 +432,7 @@ func (w *Writer) functionDef(s *FunctionDef) {
 		w.identifier(arg.Arg)
 		if i >= defaultOffset {
 			w.write("=")
-			w.writeExpr(s.Args.Defaults[i-defaultOffset])
+			w.WriteExpr(s.Args.Defaults[i-defaultOffset])
 		}
 	}
 	w.endParen()
@@ -441,7 +456,7 @@ func (w *Writer) classDef(s *ClassDef) {
 			if i > 0 {
 				w.comma()
 			}
-			w.writeExpr(base)
+			w.WriteExpr(base)
 		}
 		w.endParen()
 	}

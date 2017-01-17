@@ -4,6 +4,8 @@ import (
 	"fmt"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
+	"go/types"
+	"strconv"
 )
 
 var pySelf = py.Identifier("self")
@@ -17,7 +19,13 @@ type Module struct {
 	Methods   map[py.Identifier][]*py.FunctionDef
 }
 
-type Compiler struct{}
+type Compiler struct {
+	types.Info
+}
+
+func NewCompiler(typeInfo types.Info) *Compiler {
+	return &Compiler{typeInfo}
+}
 
 func (c *Compiler) newModule() *Module {
 	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
@@ -78,26 +86,43 @@ func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 }
 
 func (c *Compiler) nilValue(typ ast.Expr) py.Expr {
+	return c.zeroValue(c.TypeOf(typ))
+}
+
+func (c *Compiler) zeroValue(typ types.Type) py.Expr {
 	switch t := typ.(type) {
-	case *ast.StarExpr:
-		return &py.NameConstant{Value: py.None}
-	case *ast.Ident:
-		switch t.Name {
-		case "string":
+	case *types.Pointer, *types.Slice, *types.Map, *types.Signature, *types.Interface, *types.Chan:
+		return pyNone
+	case *types.Basic:
+		switch {
+		case t.Info()&types.IsString != 0:
 			return &py.Str{S: "\"\""}
-		case "bool":
+		case t.Info()&types.IsBoolean != 0:
 			return &py.NameConstant{Value: py.False}
-		case "int":
+		case t.Info()&types.IsInteger != 0:
 			return &py.Num{N: "0"}
+		case t.Info()&types.IsFloat != 0:
+			return &py.Num{N: "0.0"}
 		default:
-			return &py.Call{Func: c.compileExpr(t)}
+			panic(fmt.Sprintf("unknown basic type %#v", t))
 		}
-	case *ast.SelectorExpr:
-		return &py.Call{Func: c.compileExpr(t)}
-	case *ast.ArrayType:
-		return &py.List{}
+	case *types.Named:
+		return &py.Call{Func: &py.Name{Id: py.Identifier(t.Obj().Name())}}
+	case *types.Array:
+		return &py.ListComp{
+			Elt: c.zeroValue(t.Elem()),
+			Generators: []py.Comprehension{
+				py.Comprehension{
+					Target: &py.Name{Id: py.Identifier("_")},
+					Iter: &py.Call{
+						Func: pyRange,
+						Args: []py.Expr{&py.Num{N: strconv.FormatInt(t.Len(), 10)}},
+					},
+				},
+			},
+		}
 	default:
-		panic(fmt.Sprintf("unknown nilValue for %T", t))
+		panic(fmt.Sprintf("unknown zero value for %T", t))
 	}
 }
 

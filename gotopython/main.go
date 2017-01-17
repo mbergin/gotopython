@@ -7,7 +7,6 @@ import (
 	"github.com/mbergin/gotopython/compiler"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
-	"go/build"
 	"golang.org/x/tools/go/loader"
 	"os"
 )
@@ -46,6 +45,7 @@ func main() {
 	}
 
 	var loaderConfig loader.Config
+	loaderConfig.Build.GOARCH = "python"
 	const xtest = false
 	_, err := loaderConfig.FromArgs(flag.Args(), xtest)
 	// TODO ignoring args after "--"
@@ -54,8 +54,6 @@ func main() {
 		os.Exit(errArgs)
 	}
 
-	buildContext := build.Default
-	buildContext.GOARCH = "python"
 	program, err := loaderConfig.Load()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -70,7 +68,7 @@ func main() {
 			}
 		}
 
-		c := &compiler.Compiler{}
+		c := compiler.NewCompiler(pkg.Info)
 		module := c.CompileFiles(pkg.Files)
 
 		if *dumpPythonAST {

@@ -2,13 +2,47 @@ package compiler
 
 import (
 	"bytes"
+	"fmt"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"reflect"
+	"strconv"
 	"testing"
 )
+
+// Each test compiles this code with the expression under test substituted for %s
+const stmtPkgTemplate = `package main
+
+type T struct{x, y int}
+var (
+	t0 = T{}
+	t1 = T{}
+)
+
+type U struct{}
+
+var (
+	b0, b1 bool
+	w, x, y, z int
+	u0, u1 uint
+	xs []int
+	obj interface{}
+	m map[int]int
+)
+
+func ignore(interface{}) {}
+func f0() int { return 0 }
+func f1(int) int { return 0 }
+func f2(int, int) int { return 0 }
+
+func g2() (int, int) { return 0, 0 }
+
+func s(...interface{}) {}
+
+func main() {
+	%s
+}
+`
 
 const f = py.Identifier("f")
 
@@ -17,11 +51,24 @@ var tag = &py.Name{Id: py.Identifier("tag")}
 
 // Placeholders for statement blocks
 var (
-	s = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("s")}}}
-	t = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("t")}}}
-	u = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("u")}}}
-	v = []py.Stmt{&py.ExprStmt{Value: &py.Name{Id: py.Identifier("v")}}}
+	ignore = &py.Name{Id: py.Identifier("ignore")}
+	g2     = &py.Name{Id: py.Identifier("g2")}
 )
+
+func s(is ...interface{}) []py.Stmt {
+	var args []py.Expr
+	for _, i := range is {
+		switch i := i.(type) {
+		case int:
+			args = append(args, &py.Num{N: strconv.Itoa(i)})
+		case py.Expr:
+			args = append(args, i)
+		default:
+			panic(fmt.Sprintf("%T", i))
+		}
+	}
+	return []py.Stmt{&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("s")}, Args: args}}}
+}
 
 var (
 	zero = &py.Num{N: "0"}
@@ -34,10 +81,10 @@ var stmtTests = []struct {
 	python []py.Stmt
 }{
 	// Empty statement
-	{";", []py.Stmt{}},
+	//{";", []py.Stmt{}},
 
 	// Expression statement
-	{"x", []py.Stmt{&py.ExprStmt{Value: x}}},
+	{"ignore(x)", []py.Stmt{&py.ExprStmt{Value: &py.Call{Func: ignore, Args: []py.Expr{x}}}}},
 
 	// IncDec statements
 	{"x++", []py.Stmt{&py.AugAssign{Target: x, Op: py.Add, Value: one}}},
@@ -45,13 +92,9 @@ var stmtTests = []struct {
 
 	// Assignments
 	{"x = y", []py.Stmt{&py.Assign{Targets: []py.Expr{x}, Value: y}}},
-	{"x = y, z", []py.Stmt{&py.Assign{
-		Targets: []py.Expr{x},
-		Value:   &py.Tuple{Elts: []py.Expr{y, z}},
-	}}},
-	{"x, y = z", []py.Stmt{&py.Assign{
+	{"x, y = g2()", []py.Stmt{&py.Assign{
 		Targets: []py.Expr{x, y},
-		Value:   z,
+		Value:   &py.Call{Func: g2},
 	}}},
 	{"x, y = y, x", []py.Stmt{&py.Assign{
 		Targets: []py.Expr{x, y},
@@ -59,16 +102,12 @@ var stmtTests = []struct {
 	}}},
 
 	// Short variable declarations
-	{"x := y", []py.Stmt{&py.Assign{Targets: []py.Expr{x}, Value: y}}},
-	{"x := y, z", []py.Stmt{&py.Assign{
-		Targets: []py.Expr{x},
-		Value:   &py.Tuple{Elts: []py.Expr{y, z}},
-	}}},
-	{"x, y := z", []py.Stmt{&py.Assign{
+	{"x := y; _ = x", []py.Stmt{&py.Assign{Targets: []py.Expr{x}, Value: y}}},
+	{"x, y := g2(); _, _ = x, y", []py.Stmt{&py.Assign{
 		Targets: []py.Expr{x, y},
-		Value:   z,
+		Value:   &py.Call{Func: g2},
 	}}},
-	{"x, y := y, x", []py.Stmt{&py.Assign{
+	{"x, y := y, x; _, _ = x, y", []py.Stmt{&py.Assign{
 		Targets: []py.Expr{x, y},
 		Value:   &py.Tuple{Elts: []py.Expr{y, x}},
 	}}},
@@ -81,43 +120,43 @@ var stmtTests = []struct {
 	{"x *=  y", []py.Stmt{&py.AugAssign{Op: py.Mult, Target: x, Value: y}}},
 	{"x /=  y", []py.Stmt{&py.AugAssign{Op: py.FloorDiv, Target: x, Value: y}}}, // TODO py.Div for floats
 	{"x %=  y", []py.Stmt{&py.AugAssign{Op: py.Mod, Target: x, Value: y}}},
-	{"x <<= y", []py.Stmt{&py.AugAssign{Op: py.LShift, Target: x, Value: y}}},
-	{"x >>= y", []py.Stmt{&py.AugAssign{Op: py.RShift, Target: x, Value: y}}},
+	{"x <<= u0", []py.Stmt{&py.AugAssign{Op: py.LShift, Target: x, Value: u0}}},
+	{"x >>= u0", []py.Stmt{&py.AugAssign{Op: py.RShift, Target: x, Value: u0}}},
 	{"x &=  y", []py.Stmt{&py.AugAssign{Op: py.BitAnd, Target: x, Value: y}}},
 	{"x &^= y", []py.Stmt{&py.AugAssign{Op: py.BitAnd, Target: x, Value: &py.UnaryOpExpr{Op: py.Invert, Operand: y}}}},
 
 	// Branch statements
-	{"break", []py.Stmt{&py.Break{}}},
-	{"continue", []py.Stmt{&py.Continue{}}},
+	{"for { break }", []py.Stmt{&py.While{Test: pyTrue, Body: []py.Stmt{&py.Break{}}}}},
+	{"for { continue }", []py.Stmt{&py.While{Test: pyTrue, Body: []py.Stmt{&py.Continue{}}}}},
 
 	// If statements
-	{"if x {s}", []py.Stmt{&py.If{Test: x, Body: s}}},
-	{"if s; x {t}", append(s, &py.If{Test: x, Body: t})},
-	{"if x {s} else {t}", []py.Stmt{&py.If{Test: x, Body: s, Orelse: t}}},
-	{"if x {s} else if y {t}", []py.Stmt{&py.If{
-		Test:   x,
-		Body:   s,
-		Orelse: []py.Stmt{&py.If{Test: y, Body: t}},
+	{"if b0 {s(0)}", []py.Stmt{&py.If{Test: b0, Body: s(0)}}},
+	{"if s(0); b0 {s(1)}", append(s(0), &py.If{Test: b0, Body: s(1)})},
+	{"if b0 {s(0)} else {s(1)}", []py.Stmt{&py.If{Test: b0, Body: s(0), Orelse: s(1)}}},
+	{"if b0 {s(0)} else if b1 {s(1)}", []py.Stmt{&py.If{
+		Test:   b0,
+		Body:   s(0),
+		Orelse: []py.Stmt{&py.If{Test: b1, Body: s(1)}},
 	}}},
-	{"if x {s} else if t; y {u}", []py.Stmt{&py.If{
-		Test:   x,
-		Body:   s,
-		Orelse: append(t, &py.If{Test: y, Body: u}),
+	{"if b0 {s(0)} else if s(1); b1 {s(2)}", []py.Stmt{&py.If{
+		Test:   b0,
+		Body:   s(0),
+		Orelse: append(s(1), &py.If{Test: b1, Body: s(2)}),
 	}}},
 
 	// Range for
-	{"for x := range y {s}", []py.Stmt{
+	{"for x := range xs {s(x)}", []py.Stmt{
 		// for x in range(len(y)): s
 		&py.For{
 			Target: x,
 			Iter: &py.Call{
 				Func: pyRange,
-				Args: []py.Expr{&py.Call{Func: pyLen, Args: []py.Expr{y}}},
+				Args: []py.Expr{&py.Call{Func: pyLen, Args: []py.Expr{xs}}},
 			},
-			Body: s,
+			Body: s(x),
 		},
 	}},
-	{"for x, y := range z {s}", []py.Stmt{
+	{"for x, y := range xs {s(x,y)}", []py.Stmt{
 		// for x, y in enumerate(z): s
 		&py.For{
 			Target: &py.Tuple{
@@ -125,79 +164,79 @@ var stmtTests = []struct {
 			},
 			Iter: &py.Call{
 				Func: pyEnumerate,
-				Args: []py.Expr{z},
+				Args: []py.Expr{xs},
 			},
-			Body: s,
+			Body: s(x, y),
 		},
 	}},
-	{"for _, x := range y {s}", []py.Stmt{
+	{"for _, x := range xs {s(x)}", []py.Stmt{
 		// for x in y: s
 		&py.For{
 			Target: x,
-			Iter:   y,
-			Body:   s,
+			Iter:   xs,
+			Body:   s(x),
 		},
 	}},
 
 	// For statement
-	{"for {s}", []py.Stmt{
+	{"for {s(0)}", []py.Stmt{
 		&py.While{
 			Test: pyTrue,
-			Body: s,
+			Body: s(0),
 		},
 	}},
-	{"for x {s}", []py.Stmt{
+	{"for b0 {s(x)}", []py.Stmt{
 		&py.While{
-			Test: x,
-			Body: s,
+			Test: b0,
+			Body: s(x),
 		},
 	}},
-	{"for s; y; t {u}",
-		append(s,
+	{"for s(0); b0; s(1) {s(2)}",
+		append(s(0),
 			&py.While{
-				Test: y,
-				Body: append(u, t...),
+				Test: b0,
+				Body: append(s(2), s(1)...),
 			}),
 	},
 
 	// Var declaration statements
-	{"var x int", []py.Stmt{
+	{"var x int; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   zero,
 		},
 	}},
-	{"var x *int", []py.Stmt{
+	{"var x *int; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   pyNone,
 		},
 	}},
-	{"var x string", []py.Stmt{
+	{"var x string; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   pyEmptyString,
 		},
 	}},
-	{"var x bool", []py.Stmt{
+	{"var x bool; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   pyFalse,
 		},
 	}},
-	{"var x T", []py.Stmt{
+	{"var x T; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   &py.Call{Func: T},
 		},
 	}},
-	{"var x []T", []py.Stmt{
+	{"var x []T; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
-			Value:   &py.List{},
+			Value:   pyNone,
 		},
 	}},
-	{"var x, y int", []py.Stmt{
+	{"var x, y int; _, _ = x, y", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x, y},
 			Value: &py.Tuple{
@@ -205,13 +244,13 @@ var stmtTests = []struct {
 			},
 		},
 	}},
-	{"var x int = 1", []py.Stmt{
+	{"var x int = 1; _ = x", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
 			Value:   one,
 		},
 	}},
-	{"var x, y int = 1, 2", []py.Stmt{
+	{"var x, y int = 1, 2; _, _ = x, y", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x, y},
 			Value: &py.Tuple{
@@ -219,10 +258,10 @@ var stmtTests = []struct {
 			},
 		},
 	}},
-	{"var x, y int = z()", []py.Stmt{
+	{"var x, y int = g2(); _, _ = x, y", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x, y},
-			Value:   &py.Call{Func: z},
+			Value:   &py.Call{Func: g2},
 		},
 	}},
 
@@ -235,14 +274,14 @@ var stmtTests = []struct {
 			},
 		},
 	}},
-	{"const (x = y; z = w)", []py.Stmt{
+	{"const (x = 1; z = 2)", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{x},
-			Value:   y,
+			Value:   one,
 		},
 		&py.Assign{
 			Targets: []py.Expr{z},
-			Value:   w,
+			Value:   two,
 		},
 	}},
 
@@ -302,18 +341,18 @@ var stmtTests = []struct {
 			Value:   x,
 		},
 	}},
-	{"switch s; x { case y: t }", []py.Stmt{
-		s[0],
+	{"switch s(0); x { case y: s(1) }", []py.Stmt{
+		s(0)[0],
 		&py.Assign{
 			Targets: []py.Expr{tag},
 			Value:   x,
 		},
 		&py.If{
 			Test: &py.Compare{Left: tag, Comparators: []py.Expr{y}, Ops: []py.CmpOp{py.Eq}},
-			Body: t,
+			Body: s(1),
 		},
 	}},
-	{"switch x { case y, z: s; default: u; case w: t }", []py.Stmt{
+	{"switch x { case y, z: s(0); default: s(1); case w: s(2) }", []py.Stmt{
 		&py.Assign{
 			Targets: []py.Expr{tag},
 			Value:   x,
@@ -326,73 +365,73 @@ var stmtTests = []struct {
 					&py.Compare{Left: tag, Comparators: []py.Expr{z}, Ops: []py.CmpOp{py.Eq}},
 				},
 			},
-			Body: s,
+			Body: s(0),
 			Orelse: []py.Stmt{
 				&py.If{
 					Test:   &py.Compare{Left: tag, Comparators: []py.Expr{w}, Ops: []py.CmpOp{py.Eq}},
-					Body:   t,
-					Orelse: u,
+					Body:   s(2),
+					Orelse: s(1),
 				},
 			},
 		},
 	}},
-	{"switch { default: u; case x>0: s; case y<0: t }", []py.Stmt{
+	{"switch { default: s(0); case x>0: s(1); case y<0: s(2) }", []py.Stmt{
 		&py.If{
 			Test: &py.Compare{Left: x, Comparators: []py.Expr{zero}, Ops: []py.CmpOp{py.Gt}},
-			Body: s,
+			Body: s(1),
 			Orelse: []py.Stmt{
 				&py.If{
 					Test:   &py.Compare{Left: y, Comparators: []py.Expr{zero}, Ops: []py.CmpOp{py.Lt}},
-					Body:   t,
-					Orelse: u,
+					Body:   s(2),
+					Orelse: s(0),
 				},
 			},
 		},
 	}},
 
 	// Type switch
-	{"switch s; x.(type) { default: t; case T: u; case U: v}", []py.Stmt{
-		s[0],
+	{"switch s(0); obj.(type) { default: s(1); case T: s(2); case U: s(3)}", []py.Stmt{
+		s(0)[0],
 		&py.Assign{
 			Targets: []py.Expr{tag},
-			Value:   &py.Call{Func: pyType, Args: []py.Expr{x}},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{obj}},
 		},
 		&py.If{
 			Test: &py.Compare{Left: tag, Comparators: []py.Expr{T}, Ops: []py.CmpOp{py.Eq}},
-			Body: u,
+			Body: s(2),
 			Orelse: []py.Stmt{
 				&py.If{
 					Test:   &py.Compare{Left: tag, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
-					Body:   v,
-					Orelse: t,
+					Body:   s(3),
+					Orelse: s(1),
 				},
 			},
 		},
 	}},
-	{"switch s; y := x.(type) { default: t; case T: u; case U: v}", []py.Stmt{
-		s[0],
+	{"switch s(0); y := obj.(type) { default: s(1, y); case T: s(2); case U: s(3)}", []py.Stmt{
+		s(0)[0],
 		&py.Assign{
 			Targets: []py.Expr{y},
-			Value:   &py.Call{Func: pyType, Args: []py.Expr{x}},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{obj}},
 		},
 		&py.If{
 			Test: &py.Compare{Left: y, Comparators: []py.Expr{T}, Ops: []py.CmpOp{py.Eq}},
-			Body: u,
+			Body: s(2),
 			Orelse: []py.Stmt{
 				&py.If{
 					Test:   &py.Compare{Left: y, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
-					Body:   v,
-					Orelse: t,
+					Body:   s(3),
+					Orelse: s(1, y),
 				},
 			},
 		},
 	}},
 
 	// Builtin functions
-	{"delete(x, y)", []py.Stmt{
+	{"delete(m, y)", []py.Stmt{
 		&py.Try{
 			Body: []py.Stmt{
-				&py.Delete{Targets: []py.Expr{&py.Subscript{Value: x, Slice: &py.Index{Value: y}}}},
+				&py.Delete{Targets: []py.Expr{&py.Subscript{Value: m, Slice: &py.Index{Value: y}}}},
 			},
 			Handlers: []py.ExceptHandler{
 				{Typ: &py.Name{Id: py.Identifier("KeyError")},
@@ -400,23 +439,6 @@ var stmtTests = []struct {
 			},
 		},
 	}},
-}
-
-func parseStmt(stmt string) (ast.Stmt, error) {
-	stmt = "package file\nfunc f() {\n" + stmt + "\n}\n"
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "file.go", stmt, 0)
-	if err != nil {
-		return nil, err
-	}
-	pkg := &ast.Package{
-		Name:  "file",
-		Files: map[string]*ast.File{"file.go": file},
-	}
-	if err != nil {
-		return nil, err
-	}
-	return pkg.Files["file.go"].Decls[0].(*ast.FuncDecl).Body.List[0], nil
 }
 
 func pythonCode(stmts []py.Stmt) string {
@@ -427,17 +449,22 @@ func pythonCode(stmts []py.Stmt) string {
 }
 
 func TestStmt(t *testing.T) {
-
 	for _, test := range stmtTests {
-		goStmt, err := parseStmt(test.golang)
-		if err != nil {
-			t.Errorf("failed to parse Go stmt %q: %s", test.golang, err)
+		pkg, fileScope, errs := buildFile(fmt.Sprintf(stmtPkgTemplate, test.golang))
+		if errs != nil {
+			t.Errorf("failed to build Go stmt %q", test.golang)
+			for _, e := range errs {
+				t.Error(e)
+			}
+			t.FailNow()
 			continue
 		}
-		c := &Compiler{}
-		pyStmt := c.compileStmt(goStmt)
-		if !reflect.DeepEqual(pyStmt, test.python) {
-			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmt))
+
+		c := NewCompiler(pkg.Info)
+		goStmt := fileScope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
+		pyStmts := c.compileStmt(goStmt)
+		if !reflect.DeepEqual(pyStmts, test.python) {
+			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmts))
 		}
 	}
 }
