@@ -81,7 +81,7 @@ var stmtTests = []struct {
 	python []py.Stmt
 }{
 	// Empty statement
-	//{";", []py.Stmt{}},
+	{";", []py.Stmt{}},
 
 	// Expression statement
 	{"ignore(x)", []py.Stmt{&py.ExprStmt{Value: &py.Call{Func: ignore, Args: []py.Expr{x}}}}},
