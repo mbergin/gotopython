@@ -1,13 +1,44 @@
 package compiler
 
 import (
+	"fmt"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"reflect"
 	"testing"
 )
+
+// Each test compiles this code with the function declaration under test substituted for %s
+const funcDeclPkgTemplate = `package main
+
+type T struct{x, y int}
+var (
+	t0 = T{}
+	t1 = T{}
+)
+
+type U struct{}
+
+var (
+	b0, b1 bool
+	w, x, y, z int
+	u0, u1 uint
+	xs []int
+	obj interface{}
+	m map[int]int
+)
+
+func ignore(interface{}) {}
+func f0() int { return 0 }
+func f1(int) int { return 0 }
+func f2(int, int) int { return 0 }
+
+func g2() (int, int) { return 0, 0 }
+
+func s(...interface{}) {}
+
+%s
+`
 
 var noClass py.Identifier
 
@@ -25,9 +56,9 @@ var funcDeclTests = []struct {
 			Args: []py.Arg{py.Arg{Arg: x.Id}},
 		},
 	}}},
-	{"func f(x T) U {s(0)}", FuncDecl{noClass, &py.FunctionDef{
+	{"func f(x T) U { return U{} }", FuncDecl{noClass, &py.FunctionDef{
 		Name: f,
-		Body: s(0),
+		Body: []py.Stmt{&py.Return{Value: &py.Call{Func: U}}},
 		Args: py.Arguments{
 			Args: []py.Arg{py.Arg{Arg: x.Id}},
 		},
@@ -77,34 +108,24 @@ var funcDeclTests = []struct {
 	// }}},
 }
 
-func parseFuncDecl(stmt string) (*ast.FuncDecl, error) {
-	stmt = "package file\n" + stmt
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "file.go", stmt, 0)
-	if err != nil {
-		return nil, err
-	}
-	pkg := &ast.Package{
-		Name:  "file",
-		Files: map[string]*ast.File{"file.go": file},
-	}
-	if err != nil {
-		return nil, err
-	}
-	return pkg.Files["file.go"].Decls[0].(*ast.FuncDecl), nil
-}
-
 func TestFuncDecl(t *testing.T) {
 	for _, test := range funcDeclTests {
-		funcDecl, err := parseFuncDecl(test.golang)
-		if err != nil {
-			t.Errorf("failed to parse Go stmt %q: %s", test.golang, err)
+		pkg, file, errs := buildFile(fmt.Sprintf(funcDeclPkgTemplate, test.golang))
+		if errs != nil {
+			t.Errorf("failed to build Go func decl %q", test.golang)
+			for _, e := range errs {
+				t.Error(e)
+			}
 			continue
 		}
-		c := &Compiler{}
-		pyFuncDecl := c.compileFuncDecl(funcDecl)
+
+		c := NewCompiler(pkg.Info)
+
+		goFuncDecl := file.Decls[len(file.Decls)-1].(*ast.FuncDecl)
+		pyFuncDecl := c.compileFuncDecl(goFuncDecl)
 		if !reflect.DeepEqual(pyFuncDecl, test.python) {
-			t.Errorf("want \n%s got \n%s", sp.Sdump(test.python), sp.Sdump(pyFuncDecl))
+			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang,
+				pythonCode([]py.Stmt{test.python.Def}), pythonCode([]py.Stmt{pyFuncDecl.Def}))
 		}
 	}
 }

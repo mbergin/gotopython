@@ -450,7 +450,7 @@ func pythonCode(stmts []py.Stmt) string {
 
 func TestStmt(t *testing.T) {
 	for _, test := range stmtTests {
-		pkg, fileScope, errs := buildFile(fmt.Sprintf(stmtPkgTemplate, test.golang))
+		pkg, file, errs := buildFile(fmt.Sprintf(stmtPkgTemplate, test.golang))
 		if errs != nil {
 			t.Errorf("failed to build Go stmt %q", test.golang)
 			for _, e := range errs {
@@ -461,7 +461,7 @@ func TestStmt(t *testing.T) {
 		}
 
 		c := NewCompiler(pkg.Info)
-		goStmt := fileScope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
+		goStmt := file.Scope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
 		pyStmts := c.compileStmt(goStmt)
 		if !reflect.DeepEqual(pyStmts, test.python) {
 			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmts))
