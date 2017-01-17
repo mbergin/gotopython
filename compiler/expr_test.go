@@ -98,15 +98,15 @@ var exprTests = []struct {
 	{".12345E+5", &py.Num{N: ".12345E+5"}},
 
 	// Imaginary literals
-	// {"0i", &py.Num{N: "0j"}},
-	// {"011i", &py.Num{N: "011j"}},
-	// {"0.i", &py.Num{N: "0.j"}},
-	// {"2.71828i", &py.Num{N: "2.71828j"}},
-	// {"1.e+0i", &py.Num{N: "1.e+0j"}},
-	// {"6.67428e-11i", &py.Num{N: "6.67428e-11j"}},
-	// {"1E6i", &py.Num{N: "1E6j"}},
-	// {".25i", &py.Num{N: ".25j"}},
-	// {".12345E+5i", &py.Num{N: ".12345E+5j"}},
+	{"0i", &py.Num{N: "0j"}},
+	{"011i", &py.Num{N: "011j"}},
+	{"0.i", &py.Num{N: "0.j"}},
+	{"2.71828i", &py.Num{N: "2.71828j"}},
+	{"1.e+0i", &py.Num{N: "1.e+0j"}},
+	{"6.67428e-11i", &py.Num{N: "6.67428e-11j"}},
+	{"1E6i", &py.Num{N: "1E6j"}},
+	{".25i", &py.Num{N: ".25j"}},
+	{".12345E+5i", &py.Num{N: ".12345E+5j"}},
 
 	// String literals
 	{`""`, &py.Str{S: `""`}},

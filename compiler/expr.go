@@ -5,6 +5,7 @@ import (
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
 	"go/token"
+	"strings"
 )
 
 var (
@@ -115,6 +116,8 @@ func (c *Compiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
 		return &py.Str{S: expr.Value}
 	case token.STRING:
 		return &py.Str{S: expr.Value}
+	case token.IMAG:
+		return &py.Num{N: strings.Replace(expr.Value, "i", "j", 1)}
 	}
 	panic(fmt.Sprintf("unknown BasicLit kind: %v", expr.Kind))
 }
