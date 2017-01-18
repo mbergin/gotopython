@@ -107,11 +107,18 @@ var funcDeclTests = []struct {
 	// 	},
 	// }}},
 
-	// Test that functions that hide builtins can be called
+	// Test that identifiers that hide builtins can be called
 	{"func make(); func f() { make() }", FuncDecl{noClass, &py.FunctionDef{
 		Name: f,
 		Body: []py.Stmt{
 			&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("make")}}},
+		},
+	}}},
+	{"func f() { true := 1; _ = true }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("true")}}, Value: one},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("true")}},
 		},
 	}}},
 }

@@ -10,12 +10,12 @@ import (
 )
 
 func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
-	switch ident.Name {
-	case "true":
+	switch c.ObjectOf(ident) {
+	case builtin.true:
 		return pyTrue
-	case "false":
+	case builtin.false:
 		return pyFalse
-	case "nil":
+	case builtin.nil:
 		return pyNone
 	default:
 		return &py.Name{Id: py.Identifier(ident.Name)}
@@ -226,6 +226,9 @@ var builtin = struct {
 	println types.Object
 	real    types.Object
 	recover types.Object
+	true    types.Object
+	false   types.Object
+	nil     types.Object
 }{
 	append:  types.Universe.Lookup("append"),
 	cap:     types.Universe.Lookup("cap"),
@@ -242,6 +245,9 @@ var builtin = struct {
 	println: types.Universe.Lookup("println"),
 	real:    types.Universe.Lookup("real"),
 	recover: types.Universe.Lookup("recover"),
+	true:    types.Universe.Lookup("true"),
+	false:   types.Universe.Lookup("false"),
+	nil:     types.Universe.Lookup("nil"),
 }
 
 func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
