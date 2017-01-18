@@ -10,7 +10,11 @@ import (
 )
 
 func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
-	switch c.ObjectOf(ident) {
+	obj := c.ObjectOf(ident)
+	if obj == nil {
+		panic(fmt.Sprintf("Ident has no object: %#v", ident))
+	}
+	switch obj {
 	case builtin.true:
 		return pyTrue
 	case builtin.false:
@@ -18,7 +22,7 @@ func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	case builtin.nil:
 		return pyNone
 	default:
-		return &py.Name{Id: py.Identifier(ident.Name)}
+		return &py.Name{Id: c.id(obj)}
 	}
 }
 

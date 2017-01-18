@@ -49,6 +49,12 @@ const f = py.Identifier("f")
 // Name of temp variable used to store evaluated switch tag
 var tag = &py.Name{Id: py.Identifier("tag")}
 
+// Var decl targets e.g. ax := 0; var ax int; const ax = 0
+var (
+	ax = &py.Name{Id: py.Identifier("ax")}
+	ay = &py.Name{Id: py.Identifier("ay")}
+)
+
 // Placeholders for statement blocks
 var (
 	ignore = &py.Name{Id: py.Identifier("ignore")}
@@ -102,13 +108,13 @@ var stmtTests = []struct {
 	}}},
 
 	// Short variable declarations
-	{"x := y; _ = x", []py.Stmt{&py.Assign{Targets: []py.Expr{x}, Value: y}}},
-	{"x, y := g2(); _, _ = x, y", []py.Stmt{&py.Assign{
-		Targets: []py.Expr{x, y},
+	{"ax := y; _ = ax", []py.Stmt{&py.Assign{Targets: []py.Expr{ax}, Value: y}}},
+	{"ax, ay := g2(); _, _ = ax, ay", []py.Stmt{&py.Assign{
+		Targets: []py.Expr{ax, ay},
 		Value:   &py.Call{Func: g2},
 	}}},
-	{"x, y := y, x; _, _ = x, y", []py.Stmt{&py.Assign{
-		Targets: []py.Expr{x, y},
+	{"ax, ay := y, x; _, _ = ax, ay", []py.Stmt{&py.Assign{
+		Targets: []py.Expr{ax, ay},
 		Value:   &py.Tuple{Elts: []py.Expr{y, x}},
 	}}},
 
@@ -200,87 +206,87 @@ var stmtTests = []struct {
 	},
 
 	// Var declaration statements
-	{"var x int; _ = x", []py.Stmt{
+	{"var ax int; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   zero,
 		},
 	}},
-	{"var x *int; _ = x", []py.Stmt{
+	{"var ax *int; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   pyNone,
 		},
 	}},
-	{"var x string; _ = x", []py.Stmt{
+	{"var ax string; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   pyEmptyString,
 		},
 	}},
-	{"var x bool; _ = x", []py.Stmt{
+	{"var ax bool; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   pyFalse,
 		},
 	}},
-	{"var x T; _ = x", []py.Stmt{
+	{"var ax T; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   &py.Call{Func: T},
 		},
 	}},
-	{"var x []T; _ = x", []py.Stmt{
+	{"var ax []T; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   pyNone,
 		},
 	}},
-	{"var x, y int; _, _ = x, y", []py.Stmt{
+	{"var ax, ay int; _, _ = ax, ay", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x, y},
+			Targets: []py.Expr{ax, ay},
 			Value: &py.Tuple{
 				Elts: []py.Expr{zero, zero},
 			},
 		},
 	}},
-	{"var x int = 1; _ = x", []py.Stmt{
+	{"var ax int = 1; _ = ax", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   one,
 		},
 	}},
-	{"var x, y int = 1, 2; _, _ = x, y", []py.Stmt{
+	{"var ax, ay int = 1, 2; _, _ = ax, ay", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x, y},
+			Targets: []py.Expr{ax, ay},
 			Value: &py.Tuple{
 				Elts: []py.Expr{one, two},
 			},
 		},
 	}},
-	{"var x, y int = g2(); _, _ = x, y", []py.Stmt{
+	{"var ax, ay int = g2(); _, _ = ax, ay", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x, y},
+			Targets: []py.Expr{ax, ay},
 			Value:   &py.Call{Func: g2},
 		},
 	}},
 
 	// Const declarations
-	{"const x, y = 1, 2", []py.Stmt{
+	{"const ax, ay = 1, 2", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x, y},
+			Targets: []py.Expr{ax, ay},
 			Value: &py.Tuple{
 				Elts: []py.Expr{one, two},
 			},
 		},
 	}},
-	{"const (x = 1; z = 2)", []py.Stmt{
+	{"const (ax = 1; ay = 2)", []py.Stmt{
 		&py.Assign{
-			Targets: []py.Expr{x},
+			Targets: []py.Expr{ax},
 			Value:   one,
 		},
 		&py.Assign{
-			Targets: []py.Expr{z},
+			Targets: []py.Expr{ay},
 			Value:   two,
 		},
 	}},
@@ -408,7 +414,7 @@ var stmtTests = []struct {
 			},
 		},
 	}},
-	{"switch s(0); y := obj.(type) { default: s(1, y); case T: s(2); case U: s(3)}", []py.Stmt{
+	{"switch s(0); y := obj.(type) { default: s(1, y); case T: s(2, y); case U: s(3, y)}", []py.Stmt{
 		s(0)[0],
 		&py.Assign{
 			Targets: []py.Expr{y},
@@ -416,12 +422,18 @@ var stmtTests = []struct {
 		},
 		&py.If{
 			Test: &py.Compare{Left: y, Comparators: []py.Expr{T}, Ops: []py.CmpOp{py.Eq}},
-			Body: s(2),
+			Body: append([]py.Stmt{
+				&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("y2")}}, Value: y}},
+				s(2, &py.Name{Id: py.Identifier("y2")})...),
 			Orelse: []py.Stmt{
 				&py.If{
-					Test:   &py.Compare{Left: y, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
-					Body:   s(3),
-					Orelse: s(1, y),
+					Test: &py.Compare{Left: y, Comparators: []py.Expr{U}, Ops: []py.CmpOp{py.Eq}},
+					Body: append([]py.Stmt{
+						&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("y3")}}, Value: y}},
+						s(3, &py.Name{Id: py.Identifier("y3")})...),
+					Orelse: append([]py.Stmt{
+						&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("y1")}}, Value: y}},
+						s(1, &py.Name{Id: py.Identifier("y1")})...),
 				},
 			},
 		},

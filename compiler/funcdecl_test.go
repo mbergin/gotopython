@@ -121,6 +121,17 @@ var funcDeclTests = []struct {
 			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("true")}},
 		},
 	}}},
+
+	// Var decl shadows that of outer scope. Python only has function level scopes so vars must be renamed
+	{"func f() { x := 1; {x := 2; _ = x}; _ = x }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x1")}}, Value: two},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("x1")}},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("x")}},
+		},
+	}}},
 }
 
 func TestFuncDecl(t *testing.T) {

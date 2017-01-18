@@ -246,13 +246,17 @@ func (c *Compiler) compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 		stmts = append(stmts, c.compileStmt(s.Init)...)
 	}
 	var tag py.Expr
+	var symbolicVarName string
 	var typeAssert ast.Expr
+
 	switch s := s.Assign.(type) {
 	case *ast.AssignStmt:
-		tag = c.compileExpr(s.Lhs[0])
+		ident := s.Lhs[0].(*ast.Ident)
+		tag = &py.Name{Id: c.tempID(ident.Name)}
+		symbolicVarName = ident.Name
 		typeAssert = s.Rhs[0]
 	case *ast.ExprStmt:
-		tag = &py.Name{Id: py.Identifier("tag")}
+		tag = &py.Name{Id: c.tempID("tag")}
 		typeAssert = s.X
 	default:
 		panic(fmt.Sprintf("Unknown statement type in type switch assign: %T", s))
@@ -268,12 +272,22 @@ func (c *Compiler) compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 	for _, stmt := range s.Body.List {
 		caseClause := stmt.(*ast.CaseClause)
 		test := c.compileCaseClauseTest(caseClause, tag)
+		var bodyStmts []py.Stmt
+		if symbolicVarName != "" {
+			typedIdent := c.id(c.Implicits[caseClause])
+			assign := &py.Assign{
+				Targets: []py.Expr{&py.Name{Id: typedIdent}},
+				Value:   tag,
+			}
+			bodyStmts = append(bodyStmts, assign)
+		}
+		bodyStmts = append(bodyStmts, c.compileStmts(caseClause.Body)...)
 		if test == nil {
 			// no test => default clause
-			defaultBody = c.compileStmts(caseClause.Body)
+			defaultBody = bodyStmts
 			continue
 		}
-		ifStmt := &py.If{Test: test, Body: c.compileStmts(caseClause.Body)}
+		ifStmt := &py.If{Test: test, Body: bodyStmts}
 		if firstIfStmt == nil {
 			firstIfStmt = ifStmt
 			lastIfStmt = ifStmt
