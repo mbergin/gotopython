@@ -10,6 +10,9 @@ import (
 )
 
 func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
+	if c.isBlank(ident) {
+		return &py.Name{Id: py.Identifier("_")}
+	}
 	obj := c.ObjectOf(ident)
 	if obj == nil {
 		panic(fmt.Sprintf("Ident has no object: %#v", ident))
