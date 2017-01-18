@@ -68,7 +68,7 @@ func main() {
 			}
 		}
 
-		c := compiler.NewCompiler(pkg.Info)
+		c := compiler.NewCompiler(&pkg.Info)
 		module := c.CompileFiles(pkg.Files)
 
 		if *dumpPythonAST {

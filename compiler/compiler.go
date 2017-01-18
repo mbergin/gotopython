@@ -20,11 +20,12 @@ type Module struct {
 }
 
 type Compiler struct {
-	types.Info
+	*types.Info
+	*scope
 }
 
-func NewCompiler(typeInfo types.Info) *Compiler {
-	return &Compiler{typeInfo}
+func NewCompiler(typeInfo *types.Info) *Compiler {
+	return &Compiler{typeInfo, newScope()}
 }
 
 func (c *Compiler) newModule() *Module {

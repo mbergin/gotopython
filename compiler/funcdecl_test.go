@@ -134,7 +134,7 @@ func TestFuncDecl(t *testing.T) {
 			continue
 		}
 
-		c := NewCompiler(pkg.Info)
+		c := NewCompiler(&pkg.Info)
 
 		goFuncDecl := file.Decls[len(file.Decls)-1].(*ast.FuncDecl)
 		pyFuncDecl := c.compileFuncDecl(goFuncDecl)

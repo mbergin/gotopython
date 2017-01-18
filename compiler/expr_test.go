@@ -317,7 +317,7 @@ func TestExpr(t *testing.T) {
 			continue
 		}
 
-		c := NewCompiler(pkg.Info)
+		c := NewCompiler(&pkg.Info)
 		goExpr := file.Scope.Lookup("expr").Decl.(*ast.ValueSpec).Values[0]
 		pyExpr := c.compileExpr(goExpr)
 		if !reflect.DeepEqual(pyExpr, test.python) {

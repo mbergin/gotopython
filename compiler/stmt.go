@@ -99,7 +99,7 @@ func (c *Compiler) compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 	return []py.Stmt{
 		&py.Assign{
 			Targets: targets,
-			Value:   c.makeTuple(values),
+			Value:   makeTuple(values),
 		},
 	}
 }

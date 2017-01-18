@@ -469,11 +469,10 @@ func TestStmt(t *testing.T) {
 			for _, e := range errs {
 				t.Error(e)
 			}
-			t.FailNow()
 			continue
 		}
 
-		c := NewCompiler(pkg.Info)
+		c := NewCompiler(&pkg.Info)
 		goStmt := file.Scope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
 		pyStmts := c.compileStmt(goStmt)
 		if !reflect.DeepEqual(pyStmts, test.python) {

@@ -22,7 +22,7 @@ func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	}
 }
 
-func (c *Compiler) comparator(t token.Token) (py.CmpOp, bool) {
+func comparator(t token.Token) (py.CmpOp, bool) {
 	switch t {
 	case token.EQL:
 		return py.Eq, true
@@ -40,7 +40,7 @@ func (c *Compiler) comparator(t token.Token) (py.CmpOp, bool) {
 	return py.CmpOp(0), false
 }
 
-func (c *Compiler) binOp(t token.Token) (py.Operator, bool) {
+func binOp(t token.Token) (py.Operator, bool) {
 	switch t {
 	case token.ADD:
 		return py.Add, true
@@ -67,7 +67,7 @@ func (c *Compiler) binOp(t token.Token) (py.Operator, bool) {
 	return py.Operator(0), false
 }
 
-func (c *Compiler) boolOp(t token.Token) (py.BoolOp, bool) {
+func boolOp(t token.Token) (py.BoolOp, bool) {
 	switch t {
 	case token.LAND:
 		return py.And, true
@@ -78,18 +78,18 @@ func (c *Compiler) boolOp(t token.Token) (py.BoolOp, bool) {
 }
 
 func (c *Compiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
-	if pyCmp, ok := c.comparator(expr.Op); ok {
+	if pyCmp, ok := comparator(expr.Op); ok {
 		return &py.Compare{
 			Left:        c.compileExpr(expr.X),
 			Ops:         []py.CmpOp{pyCmp},
 			Comparators: []py.Expr{c.compileExpr(expr.Y)}}
 	}
-	if pyOp, ok := c.binOp(expr.Op); ok {
+	if pyOp, ok := binOp(expr.Op); ok {
 		return &py.BinOp{Left: c.compileExpr(expr.X),
 			Right: c.compileExpr(expr.Y),
 			Op:    pyOp}
 	}
-	if pyBoolOp, ok := c.boolOp(expr.Op); ok {
+	if pyBoolOp, ok := boolOp(expr.Op); ok {
 		return &py.BoolOpExpr{
 			Values: []py.Expr{c.compileExpr(expr.X), c.compileExpr(expr.Y)},
 			Op:     pyBoolOp}
@@ -341,6 +341,9 @@ func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
 	}
+	if s := c.Scopes[expr]; s != nil {
+		fmt.Printf("scope of expr %s is %s", expr, s)
+	}
 	switch e := expr.(type) {
 	case *ast.UnaryExpr:
 		return c.compileUnaryExpr(e)
@@ -374,7 +377,7 @@ func (c *Compiler) compileExprs(exprs []ast.Expr) []py.Expr {
 	return pyExprs
 }
 
-func (c *Compiler) makeTuple(pyExprs []py.Expr) py.Expr {
+func makeTuple(pyExprs []py.Expr) py.Expr {
 	switch len(pyExprs) {
 	case 0:
 		return nil
@@ -386,5 +389,5 @@ func (c *Compiler) makeTuple(pyExprs []py.Expr) py.Expr {
 }
 
 func (c *Compiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
-	return c.makeTuple(c.compileExprs(exprs))
+	return makeTuple(c.compileExprs(exprs))
 }
