@@ -426,6 +426,19 @@ var stmtTests = []struct {
 			},
 		},
 	}},
+	{"switch obj.(type) { default: s(0)}", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{obj}},
+		},
+		s(0)[0],
+	}},
+	{"switch obj.(type) {}", []py.Stmt{
+		&py.Assign{
+			Targets: []py.Expr{tag},
+			Value:   &py.Call{Func: pyType, Args: []py.Expr{obj}},
+		},
+	}},
 
 	// Builtin functions
 	{"delete(m, y)", []py.Stmt{
