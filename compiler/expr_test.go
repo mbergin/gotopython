@@ -36,6 +36,8 @@ func f0() int { return 0 }
 func f1(int) int { return 0 }
 func f2(int, int) int { return 0 }
 
+func id(x interface{}) interface{} { return x }
+
 var expr = %s
 `
 
@@ -78,7 +80,7 @@ var exprTests = []struct {
 	// Predeclared identifiers
 	{"true", &py.NameConstant{Value: py.True}},
 	{"false", &py.NameConstant{Value: py.False}},
-	//{"(*T)(nil)", &py.NameConstant{Value: py.None}},
+	{"id(nil)", &py.Call{Func: &py.Name{Id: py.Identifier("id")}, Args: []py.Expr{&py.NameConstant{Value: py.None}}}},
 
 	// Integer literals
 	{"42", &py.Num{N: "42"}},
@@ -309,7 +311,7 @@ func TestExpr(t *testing.T) {
 		pkg, file, errs := buildFile(fmt.Sprintf(exprPkgTemplate, test.golang))
 		if errs != nil {
 			t.Errorf("failed to build Go expr %q", test.golang)
-			for e := range errs {
+			for _, e := range errs {
 				t.Error(e)
 			}
 			continue
@@ -320,8 +322,6 @@ func TestExpr(t *testing.T) {
 		pyExpr := c.compileExpr(goExpr)
 		if !reflect.DeepEqual(pyExpr, test.python) {
 			t.Errorf("\nwant %s\ngot  %s", pythonExprCode(test.python), pythonExprCode(pyExpr))
-			spew.Dump(test.python)
-			spew.Dump(pyExpr)
 		}
 	}
 }
