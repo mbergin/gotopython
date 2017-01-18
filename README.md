@@ -109,3 +109,10 @@ The parts of the Go language spec that are implemented are:
 | `fallthrough`        |             |
 | `goto`               |             |
 | cgo                  |             |
+
+# References
+
+* [The Go Type Checker](https://github.com/golang/example/blob/master/gotypes/README.md)
+* [GopherJS](https://github.com/gopherjs/gopherjs)
+* [go-spew](https://github.com/davecgh/go-spew)
+* [The Go Programming Language Specification](https://golang.org/ref/spec)
