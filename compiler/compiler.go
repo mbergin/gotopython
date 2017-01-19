@@ -28,10 +28,15 @@ func NewCompiler(typeInfo *types.Info) *Compiler {
 	return &Compiler{typeInfo, newScope()}
 }
 
+func (parent *Compiler) nestedCompiler() *Compiler {
+	return &Compiler{parent.Info, parent.scope.nested()}
+}
+
 func (c *Compiler) newModule() *Module {
 	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
 }
 
+// TODO get rid of this
 func (c *Compiler) identifier(ident *ast.Ident) py.Identifier {
 	return py.Identifier(ident.Name)
 }
@@ -54,36 +59,49 @@ type FuncDecl struct {
 	Def   *py.FunctionDef
 }
 
-func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
-	var recvType py.Identifier
+func (parent *Compiler) compileFunc(name py.Identifier, typ *ast.FuncType, body *ast.BlockStmt, isMethod bool, recv *ast.Ident) *py.FunctionDef {
 	pyArgs := py.Arguments{}
-	if decl.Recv != nil {
-		if len(decl.Recv.List) > 1 || len(decl.Recv.List[0].Names) > 1 {
-			panic("multiple receivers")
+	// Compiler with nested function scope
+	c := parent.nestedCompiler()
+	if isMethod {
+		var recvId py.Identifier
+		if recv != nil {
+			recvId = c.identifier(recv)
+		} else {
+			recvId = c.tempID("self")
 		}
-		field := decl.Recv.List[0]
-		name := pySelf
-		if len(field.Names) == 1 {
-			name = c.identifier(field.Names[0])
-		}
-		pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: name})
-		recvType = c.fieldType(field)
+		pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: recvId})
 	}
-	for _, param := range decl.Type.Params.List {
+	for _, param := range typ.Params.List {
 		for _, name := range param.Names {
 			pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: c.identifier(name)})
 		}
 	}
 	var pyBody []py.Stmt
-	for _, stmt := range decl.Body.List {
+	for _, stmt := range body.List {
 		pyBody = append(pyBody, c.compileStmt(stmt)...)
 	}
 	if len(pyBody) == 0 {
 		pyBody = []py.Stmt{&py.Pass{}}
 	}
-	return FuncDecl{
-		Class: recvType,
-		Def:   &py.FunctionDef{Name: c.identifier(decl.Name), Args: pyArgs, Body: pyBody}}
+	return &py.FunctionDef{Name: name, Args: pyArgs, Body: pyBody}
+}
+
+func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
+	var recvType py.Identifier
+	var recv *ast.Ident
+	if decl.Recv != nil {
+		if len(decl.Recv.List) > 1 || len(decl.Recv.List[0].Names) > 1 {
+			panic("multiple receivers")
+		}
+		field := decl.Recv.List[0]
+		if len(field.Names) == 1 {
+			recv = field.Names[0]
+		}
+		recvType = c.fieldType(field)
+	}
+	funcDef := c.compileFunc(c.identifier(decl.Name), decl.Type, decl.Body, decl.Recv != nil, recv)
+	return FuncDecl{Class: recvType, Def: funcDef}
 }
 
 func (c *Compiler) nilValue(typ ast.Expr) py.Expr {

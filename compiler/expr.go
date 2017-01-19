@@ -344,6 +344,12 @@ func (c *Compiler) compileIndexExpr(expr *ast.IndexExpr) py.Expr {
 	}
 }
 
+func (c *Compiler) compileFuncLit(expr *ast.FuncLit) ([]py.Stmt, py.Expr) {
+	id := c.tempID("func")
+	funcDef := c.compileFunc(id, expr.Type, expr.Body, false, nil)
+	return []py.Stmt{funcDef}, &py.Name{Id: id}
+}
+
 func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
@@ -372,6 +378,9 @@ func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
 		return c.compileIndexExpr(e)
 	case *ast.SliceExpr:
 		return c.compileSliceExpr(e)
+	case *ast.FuncLit:
+		_, expr := c.compileFuncLit(e)
+		return expr
 	}
 	panic(fmt.Sprintf("unknown Expr: %T", expr))
 }
