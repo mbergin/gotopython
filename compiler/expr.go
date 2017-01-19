@@ -417,3 +417,25 @@ func makeTuple(pyExprs []py.Expr) py.Expr {
 func (c *exprCompiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
 	return makeTuple(c.compileExprs(exprs))
 }
+
+func (c *exprCompiler) compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {
+	var tests []py.Expr
+	for _, expr := range caseClause.List {
+		var test py.Expr
+		if tag != nil {
+			test = &py.Compare{
+				Left:        tag,
+				Ops:         []py.CmpOp{py.Eq},
+				Comparators: []py.Expr{c.compileExpr(expr)}}
+		} else {
+			test = c.compileExpr(expr)
+		}
+		tests = append(tests, test)
+	}
+	if len(tests) == 0 {
+		return nil
+	} else if len(tests) == 1 {
+		return tests[0]
+	}
+	return &py.BoolOpExpr{Op: py.Or, Values: tests}
+}
