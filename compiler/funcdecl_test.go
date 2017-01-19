@@ -132,6 +132,63 @@ var funcDeclTests = []struct {
 			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("x")}},
 		},
 	}}},
+
+	// Function literals
+	{"func f() { x := 1; func(y int) { _ = x; _ = y }(1) }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+			&py.FunctionDef{
+				Name: py.Identifier("func"),
+				Args: py.Arguments{
+					Args: []py.Arg{
+						{Arg: py.Identifier("y")},
+					},
+				},
+				Body: []py.Stmt{
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: y},
+				},
+			},
+			&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("func")}, Args: []py.Expr{one}}},
+		},
+	}}},
+
+	// Function literals create a new python scope so variables do not need to be renamed
+	{"func f() { x := 1; func(x int) { _ = x }(1); _ = x }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+			&py.FunctionDef{
+				Name: py.Identifier("func"),
+				Args: py.Arguments{
+					Args: []py.Arg{
+						{Arg: py.Identifier("x")},
+					},
+				},
+				Body: []py.Stmt{
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
+				},
+			},
+			&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("func")}, Args: []py.Expr{one}}},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
+		},
+	}}},
+	{"func f() { x := 1; func() { x := 1; _ = x }(); _ = x }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+			&py.FunctionDef{
+				Name: py.Identifier("func"),
+				Body: []py.Stmt{
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
+				},
+			},
+			&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("func")}}},
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
+		},
+	}}},
 }
 
 func TestFuncDecl(t *testing.T) {
