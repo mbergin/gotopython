@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type exprCompiler struct {
+	*Compiler
+	stmts []py.Stmt
+}
+
 func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	if c.isBlank(ident) {
 		return &py.Name{Id: py.Identifier("_")}
@@ -84,7 +89,7 @@ func boolOp(t token.Token) (py.BoolOp, bool) {
 	return py.BoolOp(0), false
 }
 
-func (c *Compiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
+func (c *exprCompiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
 	if pyCmp, ok := comparator(expr.Op); ok {
 		return &py.Compare{
 			Left:        c.compileExpr(expr.X),
@@ -109,7 +114,7 @@ func (c *Compiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
 	panic(fmt.Sprintf("unknown BinaryExpr Op: %v", expr.Op))
 }
 
-func (c *Compiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
+func (c *exprCompiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
 	switch expr.Kind {
 	case token.INT, token.FLOAT:
 		return &py.Num{N: expr.Value}
@@ -123,7 +128,7 @@ func (c *Compiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
 	panic(fmt.Sprintf("unknown BasicLit kind: %v", expr.Kind))
 }
 
-func (c *Compiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
+func (c *exprCompiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 	switch expr.Op {
 	case token.NOT:
 		return &py.UnaryOpExpr{Op: py.Not, Operand: c.compileExpr(expr.X)}
@@ -139,7 +144,7 @@ func (c *Compiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 	panic(fmt.Sprintf("unknown UnaryExpr: %v", expr.Op))
 }
 
-func (c *Compiler) compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
+func (c *exprCompiler) compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
 	var clType ast.Expr
 	// Allowed to omit the type if this is an element of another composite literal
 	if expr.Type == nil {
@@ -205,7 +210,7 @@ func (c *Compiler) compileCompositeLit(expr *ast.CompositeLit, parentElementType
 	}
 }
 
-func (c *Compiler) compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
+func (c *exprCompiler) compileSelectorExpr(expr *ast.SelectorExpr) py.Expr {
 	return &py.Attribute{
 		Value: c.compileExpr(expr.X),
 		Attr:  c.identifier(expr.Sel),
@@ -257,7 +262,7 @@ var builtin = struct {
 	nil:     types.Universe.Lookup("nil"),
 }
 
-func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
+func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 	switch fun := expr.Fun.(type) {
 	case *ast.Ident:
 		switch c.ObjectOf(fun) {
@@ -328,7 +333,7 @@ func (c *Compiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 		Args: c.compileExprs(expr.Args),
 	}
 }
-func (c *Compiler) compileSliceExpr(slice *ast.SliceExpr) py.Expr {
+func (c *exprCompiler) compileSliceExpr(slice *ast.SliceExpr) py.Expr {
 	return &py.Subscript{
 		Value: c.compileExpr(slice.X),
 		Slice: &py.RangeSlice{
@@ -337,20 +342,25 @@ func (c *Compiler) compileSliceExpr(slice *ast.SliceExpr) py.Expr {
 		}}
 }
 
-func (c *Compiler) compileIndexExpr(expr *ast.IndexExpr) py.Expr {
+func (c *exprCompiler) compileIndexExpr(expr *ast.IndexExpr) py.Expr {
 	return &py.Subscript{
 		Value: c.compileExpr(expr.X),
 		Slice: &py.Index{Value: c.compileExpr(expr.Index)},
 	}
 }
 
-func (c *Compiler) compileFuncLit(expr *ast.FuncLit) ([]py.Stmt, py.Expr) {
-	id := c.tempID("func")
-	funcDef := c.compileFunc(id, expr.Type, expr.Body, false, nil)
-	return []py.Stmt{funcDef}, &py.Name{Id: id}
+func (c *exprCompiler) addStmt(stmt py.Stmt) {
+	c.stmts = append(c.stmts, stmt)
 }
 
-func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
+func (c *exprCompiler) compileFuncLit(expr *ast.FuncLit) py.Expr {
+	id := c.tempID("func")
+	funcDef := c.compileFunc(id, expr.Type, expr.Body, false, nil)
+	c.addStmt(funcDef)
+	return &py.Name{Id: id}
+}
+
+func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
 	}
@@ -379,13 +389,13 @@ func (c *Compiler) compileExpr(expr ast.Expr) py.Expr {
 	case *ast.SliceExpr:
 		return c.compileSliceExpr(e)
 	case *ast.FuncLit:
-		_, expr := c.compileFuncLit(e)
+		expr := c.compileFuncLit(e)
 		return expr
 	}
 	panic(fmt.Sprintf("unknown Expr: %T", expr))
 }
 
-func (c *Compiler) compileExprs(exprs []ast.Expr) []py.Expr {
+func (c *exprCompiler) compileExprs(exprs []ast.Expr) []py.Expr {
 	var pyExprs []py.Expr
 	for _, result := range exprs {
 		pyExprs = append(pyExprs, c.compileExpr(result))
@@ -404,6 +414,6 @@ func makeTuple(pyExprs []py.Expr) py.Expr {
 	}
 }
 
-func (c *Compiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
+func (c *exprCompiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
 	return makeTuple(c.compileExprs(exprs))
 }

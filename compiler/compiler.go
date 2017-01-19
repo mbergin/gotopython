@@ -32,6 +32,10 @@ func (parent *Compiler) nestedCompiler() *Compiler {
 	return &Compiler{parent.Info, parent.scope.nested()}
 }
 
+func (c *Compiler) exprCompiler() *exprCompiler {
+	return &exprCompiler{Compiler: c}
+}
+
 func (c *Compiler) newModule() *Module {
 	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
 }
