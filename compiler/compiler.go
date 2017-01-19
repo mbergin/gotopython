@@ -4,6 +4,7 @@ import (
 	"fmt"
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"strconv"
 )
@@ -22,14 +23,15 @@ type Module struct {
 type Compiler struct {
 	*types.Info
 	*scope
+	*token.FileSet
 }
 
-func NewCompiler(typeInfo *types.Info) *Compiler {
-	return &Compiler{typeInfo, newScope()}
+func NewCompiler(typeInfo *types.Info, fileSet *token.FileSet) *Compiler {
+	return &Compiler{typeInfo, newScope(), fileSet}
 }
 
 func (parent *Compiler) nestedCompiler() *Compiler {
-	return &Compiler{parent.Info, parent.scope.nested()}
+	return &Compiler{parent.Info, parent.scope.nested(), parent.FileSet}
 }
 
 func (c *Compiler) exprCompiler() *exprCompiler {
@@ -38,6 +40,10 @@ func (c *Compiler) exprCompiler() *exprCompiler {
 
 func (c *Compiler) newModule() *Module {
 	return &Module{Methods: map[py.Identifier][]*py.FunctionDef{}}
+}
+
+func (c *Compiler) err(node ast.Node, msg string, args ...interface{}) string {
+	return fmt.Sprintf("%s: %s", c.Position(node.Pos()), fmt.Sprintf(msg, args...))
 }
 
 // TODO get rid of this
@@ -53,7 +59,7 @@ func (c *Compiler) fieldType(field *ast.Field) py.Identifier {
 	case *ast.Ident:
 		ident = e
 	default:
-		panic(fmt.Sprintf("unknown field type: %T", field.Type))
+		panic(c.err(field, "unknown field type: %T", field.Type))
 	}
 	return c.identifier(ident)
 }
@@ -96,7 +102,7 @@ func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	var recv *ast.Ident
 	if decl.Recv != nil {
 		if len(decl.Recv.List) > 1 || len(decl.Recv.List[0].Names) > 1 {
-			panic("multiple receivers")
+			panic(c.err(decl, "multiple receivers"))
 		}
 		field := decl.Recv.List[0]
 		if len(field.Names) == 1 {
@@ -205,7 +211,7 @@ func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 	case *ast.Ident:
 		return &py.Assign{Targets: []py.Expr{c.compileIdent(spec.Name)}, Value: c.compileIdent(t)}
 	default:
-		panic(fmt.Sprintf("unknown TypeSpec: %T", spec.Type))
+		panic(c.err(spec, "unknown TypeSpec: %T", spec.Type))
 	}
 }
 
@@ -228,7 +234,7 @@ func (c *Compiler) compileGenDecl(decl *ast.GenDecl, module *Module) {
 		case *ast.ValueSpec:
 			module.Values = append(module.Values, c.compileValueSpec(s)...)
 		default:
-			panic(fmt.Sprintf("unknown Spec: %T", s))
+			c.err(s, "unknown Spec: %T", s)
 		}
 	}
 }
@@ -245,7 +251,7 @@ func (c *Compiler) compileDecl(decl ast.Decl, module *Module) {
 	case *ast.GenDecl:
 		c.compileGenDecl(d, module)
 	default:
-		panic(fmt.Sprintf("unknown Decl: %T", decl))
+		panic(c.err(decl, "unknown Decl: %T", decl))
 	}
 
 }

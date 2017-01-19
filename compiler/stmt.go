@@ -57,7 +57,7 @@ func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) []py.Stmt {
 		}
 
 	} else {
-		panic("nil key in range for")
+		panic(c.err(stmt, "nil key in range for"))
 	}
 	return append(e.stmts, pyStmt)
 }
@@ -124,7 +124,7 @@ func (c *Compiler) compileDeclStmt(s *ast.DeclStmt) []py.Stmt {
 		case *ast.TypeSpec:
 			compiled = []py.Stmt{c.compileTypeSpec(spec)}
 		default:
-			panic(fmt.Sprintf("unknown Spec: %T", spec))
+			panic(c.err(s, "unknown Spec: %T", spec))
 		}
 		stmts = append(stmts, compiled...)
 	}
@@ -251,7 +251,7 @@ func (c *Compiler) compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 		tag = &py.Name{Id: c.tempID("tag")}
 		typeAssert = s.X
 	default:
-		panic(fmt.Sprintf("Unknown statement type in type switch assign: %T", s))
+		panic(c.err(s, "Unknown statement type in type switch assign: %T", s))
 	}
 	expr := typeAssert.(*ast.TypeAssertExpr).X
 	tagValue := &py.Call{Func: pyType, Args: []py.Expr{e.compileExpr(expr)}}
@@ -321,7 +321,7 @@ func (c *Compiler) compileBranchStmt(s *ast.BranchStmt) []py.Stmt {
 	case token.CONTINUE:
 		return []py.Stmt{&py.Continue{}}
 	default:
-		panic(fmt.Sprintf("unknown BranchStmt %v", s.Tok))
+		panic(c.err(s, "unknown BranchStmt %v", s.Tok))
 	}
 }
 
@@ -425,5 +425,5 @@ func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 	case *ast.EmptyStmt:
 		return []py.Stmt{}
 	}
-	panic(fmt.Sprintf("unknown Stmt: %T", stmt))
+	panic(c.err(stmt, "unknown Stmt: %T", stmt))
 }

@@ -111,7 +111,7 @@ func (c *exprCompiler) compileBinaryExpr(expr *ast.BinaryExpr) py.Expr {
 			Right: &py.UnaryOpExpr{Op: py.Invert, Operand: c.compileExpr(expr.Y)},
 			Op:    py.BitAnd}
 	}
-	panic(fmt.Sprintf("unknown BinaryExpr Op: %v", expr.Op))
+	panic(c.err(expr, "unknown BinaryExpr Op: %v", expr.Op))
 }
 
 func (c *exprCompiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
@@ -125,7 +125,7 @@ func (c *exprCompiler) compileBasicLit(expr *ast.BasicLit) py.Expr {
 	case token.IMAG:
 		return &py.Num{N: strings.Replace(expr.Value, "i", "j", 1)}
 	}
-	panic(fmt.Sprintf("unknown BasicLit kind: %v", expr.Kind))
+	panic(c.err(expr, "unknown BasicLit kind: %v", expr.Kind))
 }
 
 func (c *exprCompiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
@@ -141,7 +141,7 @@ func (c *exprCompiler) compileUnaryExpr(expr *ast.UnaryExpr) py.Expr {
 	case token.XOR:
 		return &py.UnaryOpExpr{Op: py.Invert, Operand: c.compileExpr(expr.X)}
 	}
-	panic(fmt.Sprintf("unknown UnaryExpr: %v", expr.Op))
+	panic(c.err(expr, "unknown UnaryExpr: %v", expr.Op))
 }
 
 func (c *exprCompiler) compileCompositeLit(expr *ast.CompositeLit, parentElementType ast.Expr) py.Expr {
@@ -206,7 +206,7 @@ func (c *exprCompiler) compileCompositeLit(expr *ast.CompositeLit, parentElement
 		}
 		return &py.Dict{Keys: keys, Values: values}
 	default:
-		panic(fmt.Sprintf("Unknown composite literal type: %T", expr.Type))
+		panic(c.err(expr, "Unknown composite literal type: %T", expr.Type))
 	}
 }
 
@@ -289,7 +289,7 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 			case *ast.MapType:
 				return &py.Dict{}
 			default:
-				panic("bad type in make()")
+				panic(c.err(expr, "bad type in make(): %T", typ))
 			}
 		case builtin.new:
 			typ := expr.Args[0]
@@ -364,9 +364,6 @@ func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
 	}
-	if s := c.Scopes[expr]; s != nil {
-		fmt.Printf("scope of expr %s is %s", expr, s)
-	}
 	switch e := expr.(type) {
 	case *ast.UnaryExpr:
 		return c.compileUnaryExpr(e)
@@ -392,7 +389,7 @@ func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 		expr := c.compileFuncLit(e)
 		return expr
 	}
-	panic(fmt.Sprintf("unknown Expr: %T", expr))
+	panic(c.err(expr, "unknown Expr: %T", expr))
 }
 
 func (c *exprCompiler) compileExprs(exprs []ast.Expr) []py.Expr {
