@@ -21,7 +21,7 @@ The parts of the Go language spec that are implemented are:
 | Ident          | `myVar`                   | ✓           |
 | Ellipsis       | `...`                     |             |
 | BasicLit       | `42`                      | ✓           |
-| FuncLit        | `func(t T) {}`            |             |
+| FuncLit        | `func(t T) {}`            | ✓           |
 | CompositeLit   | `T{x: 1, y: 2}`           | ✓           |
 | ParenExpr      | `(x)`                     | ✓           |
 | SelectorExpr   | `x.y`                     | ✓           |
