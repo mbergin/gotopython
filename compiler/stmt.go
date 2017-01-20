@@ -97,7 +97,7 @@ func (c *Compiler) compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 		target := c.compileIdent(ident)
 
 		if len(spec.Values) == 0 {
-			value := c.nilValue(spec.Type)
+			value := c.zeroValue(c.TypeOf(ident))
 			values = append(values, value)
 		} else if i < len(spec.Values) {
 			value := e.compileExpr(spec.Values[i])

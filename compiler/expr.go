@@ -250,10 +250,12 @@ var builtin = struct {
 }
 
 func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
+
 	switch fun := expr.Fun.(type) {
 	case *ast.Ident:
 		switch c.ObjectOf(fun) {
 		case builtin.make:
+			fmt.Printf("%s\n", c.TypeOf(expr.Fun))
 			typ := expr.Args[0]
 			switch t := typ.(type) {
 			case *ast.ArrayType:
@@ -262,7 +264,7 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 				// because in the case when T is not a primitive type,
 				// every element in the list needs to be a different object.
 				return &py.ListComp{
-					Elt: c.nilValue(t.Elt),
+					Elt: c.zeroValue(c.TypeOf(t.Elt)),
 					Generators: []py.Comprehension{
 						py.Comprehension{
 							Target: &py.Name{Id: py.Identifier("_")},
@@ -280,7 +282,7 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 			}
 		case builtin.new:
 			typ := expr.Args[0]
-			return c.nilValue(typ)
+			return c.zeroValue(c.TypeOf(typ))
 		case builtin.complex:
 			return &py.Call{
 				Func: pyComplex,

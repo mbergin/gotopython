@@ -118,10 +118,6 @@ func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	return FuncDecl{Class: recvType, Def: funcDef}
 }
 
-func (c *Compiler) nilValue(typ ast.Expr) py.Expr {
-	return c.zeroValue(c.TypeOf(typ))
-}
-
 func (c *Compiler) zeroValue(typ types.Type) py.Expr {
 	switch t := typ.(type) {
 	case *types.Pointer, *types.Slice, *types.Map, *types.Signature, *types.Interface, *types.Chan:
@@ -175,7 +171,7 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.
 		for _, name := range field.Names {
 			arg := py.Arg{Arg: c.identifier(name)}
 			args = append(args, arg)
-			dflt := c.nilValue(field.Type)
+			dflt := c.zeroValue(c.TypeOf(name))
 			defaults = append(defaults, dflt)
 		}
 	}
