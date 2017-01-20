@@ -193,22 +193,24 @@ var funcDeclTests = []struct {
 
 func TestFuncDecl(t *testing.T) {
 	for _, test := range funcDeclTests {
-		pkg, file, errs := buildFile(fmt.Sprintf(funcDeclPkgTemplate, test.golang))
-		if errs != nil {
-			t.Errorf("failed to build Go func decl %q", test.golang)
-			for _, e := range errs {
-				t.Error(e)
+		t.Run(test.golang, func(t *testing.T) {
+			pkg, file, errs := buildFile(fmt.Sprintf(funcDeclPkgTemplate, test.golang))
+			if errs != nil {
+				t.Errorf("failed to build Go func decl %q", test.golang)
+				for _, e := range errs {
+					t.Error(e)
+				}
+				t.FailNow()
 			}
-			continue
-		}
 
-		c := NewCompiler(&pkg.Info, nil)
+			c := NewCompiler(&pkg.Info, nil)
 
-		goFuncDecl := file.Decls[len(file.Decls)-1].(*ast.FuncDecl)
-		pyFuncDecl := c.compileFuncDecl(goFuncDecl)
-		if !reflect.DeepEqual(pyFuncDecl, test.python) {
-			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang,
-				pythonCode([]py.Stmt{test.python.Def}), pythonCode([]py.Stmt{pyFuncDecl.Def}))
-		}
+			goFuncDecl := file.Decls[len(file.Decls)-1].(*ast.FuncDecl)
+			pyFuncDecl := c.compileFuncDecl(goFuncDecl)
+			if !reflect.DeepEqual(pyFuncDecl, test.python) {
+				t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang,
+					pythonCode([]py.Stmt{test.python.Def}), pythonCode([]py.Stmt{pyFuncDecl.Def}))
+			}
+		})
 	}
 }

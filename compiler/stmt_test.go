@@ -475,20 +475,22 @@ func pythonCode(stmts []py.Stmt) string {
 
 func TestStmt(t *testing.T) {
 	for _, test := range stmtTests {
-		pkg, file, errs := buildFile(fmt.Sprintf(stmtPkgTemplate, test.golang))
-		if errs != nil {
-			t.Errorf("failed to build Go stmt %q", test.golang)
-			for _, e := range errs {
-				t.Error(e)
+		t.Run(test.golang, func(t *testing.T) {
+			pkg, file, errs := buildFile(fmt.Sprintf(stmtPkgTemplate, test.golang))
+			if errs != nil {
+				t.Errorf("failed to build Go stmt %q", test.golang)
+				for _, e := range errs {
+					t.Error(e)
+				}
+				t.FailNow()
 			}
-			continue
-		}
 
-		c := NewCompiler(&pkg.Info, nil)
-		goStmt := file.Scope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
-		pyStmts := c.compileStmt(goStmt)
-		if !reflect.DeepEqual(pyStmts, test.python) {
-			t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmts))
-		}
+			c := NewCompiler(&pkg.Info, nil)
+			goStmt := file.Scope.Lookup("main").Decl.(*ast.FuncDecl).Body.List[0]
+			pyStmts := c.compileStmt(goStmt)
+			if !reflect.DeepEqual(pyStmts, test.python) {
+				t.Errorf("%q\nwant:\n%s\ngot:\n%s\n", test.golang, pythonCode(test.python), pythonCode(pyStmts))
+			}
+		})
 	}
 }

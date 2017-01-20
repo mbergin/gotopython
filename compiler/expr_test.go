@@ -308,20 +308,22 @@ func buildFile(file string) (*loader.PackageInfo, *ast.File, []error) {
 
 func TestExpr(t *testing.T) {
 	for _, test := range exprTests {
-		pkg, file, errs := buildFile(fmt.Sprintf(exprPkgTemplate, test.golang))
-		if errs != nil {
-			t.Errorf("failed to build Go expr %q", test.golang)
-			for _, e := range errs {
-				t.Error(e)
+		t.Run(test.golang, func(t *testing.T) {
+			pkg, file, errs := buildFile(fmt.Sprintf(exprPkgTemplate, test.golang))
+			if errs != nil {
+				t.Errorf("failed to build Go expr %q", test.golang)
+				for _, e := range errs {
+					t.Error(e)
+				}
+				t.FailNow()
 			}
-			continue
-		}
 
-		c := NewCompiler(&pkg.Info, nil).exprCompiler()
-		goExpr := file.Scope.Lookup("expr").Decl.(*ast.ValueSpec).Values[0]
-		pyExpr := c.compileExpr(goExpr)
-		if !reflect.DeepEqual(pyExpr, test.python) {
-			t.Errorf("\nwant %s\ngot  %s", pythonExprCode(test.python), pythonExprCode(pyExpr))
-		}
+			c := NewCompiler(&pkg.Info, nil).exprCompiler()
+			goExpr := file.Scope.Lookup("expr").Decl.(*ast.ValueSpec).Values[0]
+			pyExpr := c.compileExpr(goExpr)
+			if !reflect.DeepEqual(pyExpr, test.python) {
+				t.Errorf("\nwant %s\ngot  %s", pythonExprCode(test.python), pythonExprCode(pyExpr))
+			}
+		})
 	}
 }
