@@ -43,7 +43,11 @@ func (c *Compiler) newModule() *Module {
 }
 
 func (c *Compiler) err(node ast.Node, msg string, args ...interface{}) string {
-	return fmt.Sprintf("%s: %s", c.Position(node.Pos()), fmt.Sprintf(msg, args...))
+	if c.FileSet != nil {
+		return fmt.Sprintf("%s: %s", c.Position(node.Pos()), fmt.Sprintf(msg, args...))
+	} else {
+		return fmt.Sprintf(msg, args...)
+	}
 }
 
 // TODO get rid of this
