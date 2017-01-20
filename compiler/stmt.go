@@ -320,6 +320,8 @@ func (c *Compiler) compileBranchStmt(s *ast.BranchStmt) []py.Stmt {
 		return []py.Stmt{&py.Break{}}
 	case token.CONTINUE:
 		return []py.Stmt{&py.Continue{}}
+	case token.FALLTHROUGH:
+		return []py.Stmt{&py.ExprStmt{Value: &py.Call{Func: &py.Name{Id: py.Identifier("_TODO_fallthrough")}}}}
 	default:
 		panic(c.err(s, "unknown BranchStmt %v", s.Tok))
 	}
