@@ -255,7 +255,6 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 	case *ast.Ident:
 		switch c.ObjectOf(fun) {
 		case builtin.make:
-			fmt.Printf("%s\n", c.TypeOf(expr.Fun))
 			typ := expr.Args[0]
 			switch t := typ.(type) {
 			case *ast.ArrayType:

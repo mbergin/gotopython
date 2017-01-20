@@ -155,8 +155,8 @@ func (c *Compiler) zeroValue(typ types.Type) py.Expr {
 	}
 }
 
-func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.ClassDef {
-	if len(typ.Fields.List) == 0 {
+func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.ClassDef {
+	if typ.NumFields() == 0 {
 		return &py.ClassDef{
 			Name:          c.identifier(ident),
 			Bases:         nil,
@@ -167,28 +167,26 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.
 	}
 	args := []py.Arg{py.Arg{Arg: pySelf}}
 	var defaults []py.Expr
-	for _, field := range typ.Fields.List {
-		for _, name := range field.Names {
-			arg := py.Arg{Arg: c.identifier(name)}
-			args = append(args, arg)
-			dflt := c.zeroValue(c.TypeOf(name))
-			defaults = append(defaults, dflt)
-		}
+	for i := 0; i < typ.NumFields(); i++ {
+		field := typ.Field(i)
+		arg := py.Arg{Arg: c.id(field)}
+		args = append(args, arg)
+		dflt := c.zeroValue(field.Type())
+		defaults = append(defaults, dflt)
 	}
 	var body []py.Stmt
-	for _, field := range typ.Fields.List {
-		for _, name := range field.Names {
-			assign := &py.Assign{
-				Targets: []py.Expr{
-					&py.Attribute{
-						Value: &py.Name{Id: pySelf},
-						Attr:  c.identifier(name),
-					},
+	for i := 0; i < typ.NumFields(); i++ {
+		field := typ.Field(i)
+		assign := &py.Assign{
+			Targets: []py.Expr{
+				&py.Attribute{
+					Value: &py.Name{Id: pySelf},
+					Attr:  c.id(field),
 				},
-				Value: c.compileIdent(name),
-			}
-			body = append(body, assign)
+			},
+			Value: &py.Name{Id: c.id(field)},
 		}
+		body = append(body, assign)
 	}
 	initMethod := &py.FunctionDef{
 		Name: py.Identifier("__init__"),
@@ -204,20 +202,23 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.
 	}
 }
 
-func (c *Compiler) compileInterfaceType(ident *ast.Ident, typ *ast.InterfaceType) py.Stmt {
+func (c *Compiler) compileInterfaceType(ident *ast.Ident, typ *types.Interface) py.Stmt {
 	return nil
 }
 
 func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
-	switch t := spec.Type.(type) {
-	case *ast.StructType:
+	switch t := c.TypeOf(spec.Type).(type) {
+	case *types.Struct:
 		return c.compileStructType(spec.Name, t)
-	case *ast.Ident:
-		return &py.Assign{Targets: []py.Expr{c.compileIdent(spec.Name)}, Value: c.compileIdent(t)}
-	case *ast.InterfaceType:
+	case *types.Named:
+		return &py.Assign{
+			Targets: []py.Expr{&py.Name{Id: c.id(c.ObjectOf(spec.Name))}},
+			Value:   &py.Name{Id: c.id(t.Obj())},
+		}
+	case *types.Interface:
 		return c.compileInterfaceType(spec.Name, t)
 	default:
-		panic(c.err(spec, "unknown TypeSpec: %T", spec.Type))
+		panic(c.err(spec, "unknown TypeSpec: %T", t))
 	}
 }
 
