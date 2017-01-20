@@ -204,12 +204,18 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *ast.StructType) *py.
 	}
 }
 
+func (c *Compiler) compileInterfaceType(ident *ast.Ident, typ *ast.InterfaceType) py.Stmt {
+	return nil
+}
+
 func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 	switch t := spec.Type.(type) {
 	case *ast.StructType:
 		return c.compileStructType(spec.Name, t)
 	case *ast.Ident:
 		return &py.Assign{Targets: []py.Expr{c.compileIdent(spec.Name)}, Value: c.compileIdent(t)}
+	case *ast.InterfaceType:
+		return c.compileInterfaceType(spec.Name, t)
 	default:
 		panic(c.err(spec, "unknown TypeSpec: %T", spec.Type))
 	}

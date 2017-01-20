@@ -360,6 +360,16 @@ func (c *exprCompiler) compileFuncLit(expr *ast.FuncLit) py.Expr {
 	return &py.Name{Id: id}
 }
 
+func (c *exprCompiler) compileTypeAssertExpr(expr *ast.TypeAssertExpr) py.Expr {
+	// TODO
+	return c.compileExpr(expr.X)
+}
+
+func (c *exprCompiler) compileStarExpr(expr *ast.StarExpr) py.Expr {
+	// TODO
+	return c.compileExpr(expr.X)
+}
+
 func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 	if expr == nil {
 		return nil
@@ -386,8 +396,11 @@ func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 	case *ast.SliceExpr:
 		return c.compileSliceExpr(e)
 	case *ast.FuncLit:
-		expr := c.compileFuncLit(e)
-		return expr
+		return c.compileFuncLit(e)
+	case *ast.TypeAssertExpr:
+		return c.compileTypeAssertExpr(e)
+	case *ast.StarExpr:
+		return c.compileStarExpr(e)
 	}
 	panic(c.err(expr, "unknown Expr: %T", expr))
 }

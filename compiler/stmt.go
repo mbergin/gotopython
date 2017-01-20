@@ -424,6 +424,9 @@ func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 		return c.compileBranchStmt(s)
 	case *ast.EmptyStmt:
 		return []py.Stmt{}
+	case *ast.DeferStmt:
+		// TODO
+		return []py.Stmt{}
 	}
 	panic(c.err(stmt, "unknown Stmt: %T", stmt))
 }
