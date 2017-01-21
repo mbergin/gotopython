@@ -7,6 +7,7 @@ import (
 	"github.com/mbergin/gotopython/compiler"
 	"github.com/mbergin/gotopython/pythonast"
 	"go/build"
+	"go/parser"
 	"golang.org/x/tools/go/loader"
 	"html/template"
 	"log"
@@ -190,6 +191,7 @@ var tmpl = template.Must(template.New("template").Parse(tmplStr))
 func getOutput(goCode string) (string, error) {
 	var loaderConfig loader.Config
 	buildContext := build.Default
+	loaderConfig.ParserMode |= parser.ParseComments
 	loaderConfig.Build = &buildContext
 	loaderConfig.AllowErrors = true
 	loaderConfig.TypeChecker.Error = func(error) {}

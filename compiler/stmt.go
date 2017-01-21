@@ -5,6 +5,7 @@ import (
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
 	"go/token"
+	"strings"
 )
 
 func (c *Compiler) compileStmts(stmts []ast.Stmt) []py.Stmt {
@@ -398,37 +399,52 @@ func (c *Compiler) compileExprStmt(s *ast.ExprStmt) []py.Stmt {
 }
 
 func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
-
+	var pyStmts []py.Stmt
 	switch s := stmt.(type) {
 	case *ast.ReturnStmt:
-		return c.compileReturnStmt(s)
+		pyStmts = c.compileReturnStmt(s)
 	case *ast.ForStmt:
-		return c.compileForStmt(s)
+		pyStmts = c.compileForStmt(s)
 	case *ast.BlockStmt:
-		return c.compileStmts(s.List)
+		pyStmts = c.compileStmts(s.List)
 	case *ast.AssignStmt:
-		return c.compileAssignStmt(s)
+		pyStmts = c.compileAssignStmt(s)
 	case *ast.ExprStmt:
-		return c.compileExprStmt(s)
+		pyStmts = c.compileExprStmt(s)
 	case *ast.RangeStmt:
-		return c.compileRangeStmt(s)
+		pyStmts = c.compileRangeStmt(s)
 	case *ast.IfStmt:
-		return c.compileIfStmt(s)
+		pyStmts = c.compileIfStmt(s)
 	case *ast.IncDecStmt:
-		return c.compileIncDecStmt(s)
+		pyStmts = c.compileIncDecStmt(s)
 	case *ast.DeclStmt:
-		return c.compileDeclStmt(s)
+		pyStmts = c.compileDeclStmt(s)
 	case *ast.SwitchStmt:
-		return c.compileSwitchStmt(s)
+		pyStmts = c.compileSwitchStmt(s)
 	case *ast.TypeSwitchStmt:
-		return c.compileTypeSwitchStmt(s)
+		pyStmts = c.compileTypeSwitchStmt(s)
 	case *ast.BranchStmt:
-		return c.compileBranchStmt(s)
+		pyStmts = c.compileBranchStmt(s)
 	case *ast.EmptyStmt:
-		return []py.Stmt{}
+		pyStmts = []py.Stmt{}
 	case *ast.DeferStmt:
 		// TODO
-		return []py.Stmt{}
+		pyStmts = []py.Stmt{}
+	default:
+		panic(c.err(stmt, "unknown Stmt: %T", stmt))
 	}
-	panic(c.err(stmt, "unknown Stmt: %T", stmt))
+
+	if c.commentMap != nil {
+		var commentStmts []py.Stmt
+		for _, commentGroup := range (*c.commentMap)[stmt] {
+			text := commentGroup.Text()
+			text = strings.TrimRight(text, "\n")
+			for _, line := range strings.Split(text, "\n") {
+				commentStmts = append(commentStmts, &py.Comment{Text: " " + line})
+			}
+		}
+		pyStmts = append(commentStmts, pyStmts...)
+	}
+
+	return pyStmts
 }

@@ -8,6 +8,7 @@ import (
 	py "github.com/mbergin/gotopython/pythonast"
 	"go/ast"
 	"go/build"
+	"go/parser"
 	"golang.org/x/tools/go/loader"
 	"os"
 )
@@ -45,6 +46,7 @@ func main() {
 	//buildContext.GOARCH = "python"
 	//buildContext.GOOS = "python"
 	loaderConfig.Build = &buildContext
+	loaderConfig.ParserMode |= parser.ParseComments
 
 	const xtest = false
 	_, err := loaderConfig.FromArgs(flag.Args(), xtest)

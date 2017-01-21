@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"go/types"
 	"strconv"
+	"strings"
 )
 
 var pySelf = py.Identifier("self")
@@ -24,14 +25,21 @@ type Compiler struct {
 	*types.Info
 	*scope
 	*token.FileSet
+	commentMap *ast.CommentMap
 }
 
 func NewCompiler(typeInfo *types.Info, fileSet *token.FileSet) *Compiler {
-	return &Compiler{typeInfo, newScope(), fileSet}
+	return &Compiler{Info: typeInfo, scope: newScope(), FileSet: fileSet}
 }
 
-func (parent *Compiler) nestedCompiler() *Compiler {
-	return &Compiler{parent.Info, parent.scope.nested(), parent.FileSet}
+func (c Compiler) nestedCompiler() *Compiler {
+	c.scope = c.scope.nested()
+	return &c
+}
+
+func (c Compiler) withCommentMap(cmap *ast.CommentMap) *Compiler {
+	c.commentMap = cmap
+	return &c
 }
 
 func (c *Compiler) exprCompiler() *exprCompiler {
@@ -101,6 +109,12 @@ func (parent *Compiler) compileFunc(name py.Identifier, typ *ast.FuncType, body 
 	return &py.FunctionDef{Name: name, Args: pyArgs, Body: pyBody}
 }
 
+func makeDocString(g *ast.CommentGroup) *py.DocString {
+	text := g.Text()
+	text = strings.TrimRight(text, "\n")
+	return &py.DocString{Lines: strings.Split(text, "\n")}
+}
+
 func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 	var recvType py.Identifier
 	var recv *ast.Ident
@@ -115,6 +129,10 @@ func (c *Compiler) compileFuncDecl(decl *ast.FuncDecl) FuncDecl {
 		recvType = c.fieldType(field)
 	}
 	funcDef := c.compileFunc(c.identifier(decl.Name), decl.Type, decl.Body, decl.Recv != nil, recv)
+
+	if decl.Doc != nil {
+		funcDef.Body = append([]py.Stmt{makeDocString(decl.Doc)}, funcDef.Body...)
+	}
 	return FuncDecl{Class: recvType, Def: funcDef}
 }
 
@@ -155,25 +173,18 @@ func (c *Compiler) zeroValue(typ types.Type) py.Expr {
 	}
 }
 
-func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.ClassDef {
-	if typ.NumFields() == 0 {
-		return &py.ClassDef{
-			Name:          c.identifier(ident),
-			Bases:         nil,
-			Keywords:      nil,
-			Body:          []py.Stmt{&py.Pass{}},
-			DecoratorList: nil,
-		}
-	}
+func (c *Compiler) makeInitMethod(typ *types.Struct) *py.FunctionDef {
+	nested := c.nestedCompiler()
 	args := []py.Arg{py.Arg{Arg: pySelf}}
 	var defaults []py.Expr
 	for i := 0; i < typ.NumFields(); i++ {
 		field := typ.Field(i)
-		arg := py.Arg{Arg: c.id(field)}
+		arg := py.Arg{Arg: nested.id(field)}
 		args = append(args, arg)
-		dflt := c.zeroValue(field.Type())
+		dflt := nested.zeroValue(field.Type())
 		defaults = append(defaults, dflt)
 	}
+
 	var body []py.Stmt
 	for i := 0; i < typ.NumFields(); i++ {
 		field := typ.Field(i)
@@ -181,10 +192,10 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.Cl
 			Targets: []py.Expr{
 				&py.Attribute{
 					Value: &py.Name{Id: pySelf},
-					Attr:  c.id(field),
+					Attr:  nested.id(field),
 				},
 			},
-			Value: &py.Name{Id: c.id(field)},
+			Value: &py.Name{Id: nested.id(field)},
 		}
 		body = append(body, assign)
 	}
@@ -193,11 +204,29 @@ func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.Cl
 		Args: py.Arguments{Args: args, Defaults: defaults},
 		Body: body,
 	}
+	return initMethod
+}
+
+func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.ClassDef {
+	var body []py.Stmt
+
+	doc := (*c.commentMap)[ident]
+	if len(doc) > 0 {
+		body = append(body, makeDocString(doc[0]))
+	}
+
+	if typ.NumFields() > 0 {
+		body = append(body, c.makeInitMethod(typ))
+	}
+
+	if len(body) == 0 {
+		body = []py.Stmt{&py.Pass{}}
+	}
 	return &py.ClassDef{
 		Name:          c.identifier(ident),
 		Bases:         nil,
 		Keywords:      nil,
-		Body:          []py.Stmt{initMethod},
+		Body:          body,
 		DecoratorList: nil,
 	}
 }
@@ -264,8 +293,10 @@ func (c *Compiler) compileDecl(decl ast.Decl, module *Module) {
 }
 
 func (c *Compiler) compileFile(file *ast.File, module *Module) {
+	cmap := ast.NewCommentMap(c.FileSet, file, file.Comments)
+	c1 := c.withCommentMap(&cmap)
 	for _, decl := range file.Decls {
-		c.compileDecl(decl, module)
+		c1.compileDecl(decl, module)
 	}
 }
 
