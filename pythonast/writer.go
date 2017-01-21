@@ -60,9 +60,28 @@ func (w *Writer) writeStmt(stmt Stmt) {
 		w.del(s)
 	case *Try:
 		w.try(s)
+	case *Comment:
+		w.comment(s)
+	case *DocString:
+		w.docstring(s)
 	default:
 		panic(fmt.Sprintf("unknown Stmt: %T", stmt))
 	}
+}
+
+func (w *Writer) comment(s *Comment) {
+	w.write("#")
+	w.write(s.Text)
+}
+
+func (w *Writer) docstring(s *DocString) {
+	w.write(`"""`)
+	w.newline()
+	for _, line := range s.Lines {
+		w.write(line)
+		w.newline()
+	}
+	w.write(`"""`)
 }
 
 func (w *Writer) ret(s *Return) {

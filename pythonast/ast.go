@@ -35,6 +35,14 @@ func (ExprStmt) stmt()         {}
 func (Pass) stmt()             {}
 func (Break) stmt()            {}
 func (Continue) stmt()         {}
+func (Comment) stmt()          {}
+func (DocString) stmt()        {}
+
+type Comment struct {
+	Text string
+}
+
+type DocString struct{ Lines []string }
 
 type Expr interface {
 	Precedence() int
@@ -288,6 +296,7 @@ type Call struct {
 }
 type Num struct{ N string } // a number as a PyObject.
 type Str struct{ S string } // need to specify raw; unicode; *etc
+
 type FormattedValue struct {
 	Value      Expr
 	Conversion *int
