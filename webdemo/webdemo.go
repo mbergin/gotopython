@@ -2,28 +2,69 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/mbergin/gotopython/compiler"
 	"github.com/mbergin/gotopython/pythonast"
-	"go/ast"
-	"go/parser"
-	"go/token"
+	"go/build"
+	"golang.org/x/tools/go/loader"
 	"html/template"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 const tmplStr = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>gotopython</title>
+    <title>A work-in-progress Go to Python transpiler</title>
+	<style type="text/css">
+		html, body {
+			height: 100%;
+			overflow: hidden;
+			margin: 0;
+			font-family: sans-serif;
+		}
+		#GoCode, #python {
+			position: absolute;
+			width: 50%;
+			top: 50px;
+			bottom: 0;
+			overflow: auto;
+			box-sizing: border-box;
+			padding: 0.5em;
+		}
+		#GoCode {
+			left: 0;
+		}
+		#python {
+			left: 50%;
+		}		
+		#convert {
+			position: absolute;
+			left: 10px;
+			top: 0;
+			height: 50px;
+		}
+		#desc {
+			position: absolute;
+			top: 0;
+			right: 20px;
+		}
+	</style>
 </head>
 <body>
-    <form action="." method="POST">
-        <textarea style="width: 100%;" rows="30" name="GoCode">{{.GoCode}}</textarea>
-        <p><input type="submit"></p>
-    </form>
-    <pre>{{.PythonCode}}</pre>
+	<form id="go" action="." method="POST">
+		<p id="desc">A work-in-progress <a href="https://github.com/mbergin/gotopython">Go to Python transpiler</a>.</p>
+			
+		<p id="convert"><input type="submit" value="Convert"></p>
+		<textarea id="GoCode" name="GoCode">{{.GoCode}}</textarea>
+			
+		<div id="python">
+			<pre>{{.PythonCode}}</pre>
+		</div>
+	</form>
 </body>
 </html>
 `
@@ -146,13 +187,41 @@ func main() {
 
 var tmpl = template.Must(template.New("template").Parse(tmplStr))
 
-func parseCode(code string) ([]*ast.File, error) {
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "file.go", code, 0)
+func getOutput(goCode string) (string, error) {
+	var loaderConfig loader.Config
+	buildContext := build.Default
+	loaderConfig.Build = &buildContext
+	loaderConfig.AllowErrors = true
+	loaderConfig.TypeChecker.Error = func(error) {}
+
+	file, err := loaderConfig.ParseFile("file.go", goCode)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return []*ast.File{file}, nil
+	loaderConfig.CreateFromFiles("", file)
+	program, err := loaderConfig.Load()
+	if err != nil {
+		return "", err
+	}
+
+	pkg := program.Package("main")
+
+	if len(pkg.Errors) > 0 {
+		var writer bytes.Buffer
+		for _, err := range pkg.Errors {
+			fmt.Fprintf(&writer, "%s\n", err)
+		}
+		return "", errors.New(writer.String())
+	}
+
+	var writer bytes.Buffer
+	c := compiler.NewCompiler(&pkg.Info, program.Fset)
+	module := c.CompileFiles(pkg.Files)
+
+	pyWriter := pythonast.NewWriter(&writer)
+	pyWriter.WriteModule(module)
+
+	return writer.String(), nil
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -162,21 +231,26 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if data.GoCode == "" {
 		data.GoCode = initialGoCode
 	}
-	files, err := parseCode(data.GoCode)
+
+	pythonCode, err := getOutput(data.GoCode)
 	if err != nil {
-		data.PythonCode = fmt.Sprintf("%s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		data.PythonCode = err.Error()
 	} else {
-		c := compiler.Compiler{}
-		module := c.CompileFiles(files)
-		var writer bytes.Buffer
-		pyWriter := pythonast.NewWriter(&writer)
-		pyWriter.WriteModule(module)
-		data.PythonCode = writer.String()
+		data.PythonCode = pythonCode
 	}
 	tmpl.Execute(w, data)
 }
 
-func runWebServer(address string) {
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "ok")
+}
+
+func main() {
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(address, nil)
+	http.HandleFunc("/_ah/health", healthCheckHandler)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
