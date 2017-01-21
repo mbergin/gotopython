@@ -210,9 +210,11 @@ func (c *Compiler) makeInitMethod(typ *types.Struct) *py.FunctionDef {
 func (c *Compiler) compileStructType(ident *ast.Ident, typ *types.Struct) *py.ClassDef {
 	var body []py.Stmt
 
-	doc := (*c.commentMap)[ident]
-	if len(doc) > 0 {
-		body = append(body, makeDocString(doc[0]))
+	if c.commentMap != nil {
+		doc := (*c.commentMap)[ident]
+		if len(doc) > 0 {
+			body = append(body, makeDocString(doc[0]))
+		}
 	}
 
 	if typ.NumFields() > 0 {
