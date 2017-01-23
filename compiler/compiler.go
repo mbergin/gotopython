@@ -58,9 +58,8 @@ func (c *Compiler) err(node ast.Node, msg string, args ...interface{}) string {
 	}
 }
 
-// TODO get rid of this
 func (c *Compiler) identifier(ident *ast.Ident) py.Identifier {
-	return py.Identifier(ident.Name)
+	return c.objID(c.ObjectOf(ident))
 }
 
 func (c *Compiler) fieldType(field *ast.Field) py.Identifier {
@@ -179,7 +178,7 @@ func (c *Compiler) makeInitMethod(typ *types.Struct) *py.FunctionDef {
 	var defaults []py.Expr
 	for i := 0; i < typ.NumFields(); i++ {
 		field := typ.Field(i)
-		arg := py.Arg{Arg: nested.id(field)}
+		arg := py.Arg{Arg: nested.objID(field)}
 		args = append(args, arg)
 		dflt := nested.zeroValue(field.Type())
 		defaults = append(defaults, dflt)
@@ -192,10 +191,10 @@ func (c *Compiler) makeInitMethod(typ *types.Struct) *py.FunctionDef {
 			Targets: []py.Expr{
 				&py.Attribute{
 					Value: &py.Name{Id: pySelf},
-					Attr:  nested.id(field),
+					Attr:  nested.objID(field),
 				},
 			},
-			Value: &py.Name{Id: nested.id(field)},
+			Value: &py.Name{Id: nested.objID(field)},
 		}
 		body = append(body, assign)
 	}
@@ -243,8 +242,8 @@ func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 		return c.compileStructType(spec.Name, t)
 	case *types.Named:
 		return &py.Assign{
-			Targets: []py.Expr{&py.Name{Id: c.id(c.ObjectOf(spec.Name))}},
-			Value:   &py.Name{Id: c.id(t.Obj())},
+			Targets: []py.Expr{&py.Name{Id: c.identifier(spec.Name)}},
+			Value:   &py.Name{Id: c.objID(t.Obj())},
 		}
 	case *types.Interface:
 		return c.compileInterfaceType(spec.Name, t)

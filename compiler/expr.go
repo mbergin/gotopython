@@ -30,7 +30,7 @@ func (c *Compiler) compileIdent(ident *ast.Ident) py.Expr {
 	case builtin.nil:
 		return pyNone
 	default:
-		return &py.Name{Id: c.id(obj)}
+		return &py.Name{Id: c.objID(obj)}
 	}
 }
 
@@ -167,7 +167,7 @@ func (c *exprCompiler) compileCompositeLit(expr *ast.CompositeLit) py.Expr {
 			}
 		}
 		return &py.Call{
-			Func:     &py.Name{Id: c.id(typ.Obj())},
+			Func:     &py.Name{Id: c.objID(typ.Obj())},
 			Args:     args,
 			Keywords: keywords,
 		}

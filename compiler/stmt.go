@@ -267,7 +267,7 @@ func (c *Compiler) compileTypeSwitchStmt(s *ast.TypeSwitchStmt) []py.Stmt {
 		test := e.compileCaseClauseTest(caseClause, tag)
 		var bodyStmts []py.Stmt
 		if symbolicVarName != "" {
-			typedIdent := c.id(c.Implicits[caseClause])
+			typedIdent := c.objID(c.Implicits[caseClause])
 			assign := &py.Assign{
 				Targets: []py.Expr{&py.Name{Id: typedIdent}},
 				Value:   tag,

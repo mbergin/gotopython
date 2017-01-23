@@ -26,7 +26,7 @@ func (s *scope) nested() *scope {
 	return ns
 }
 
-func (s *scope) id(goID types.Object) py.Identifier {
+func (s *scope) objID(goID types.Object) py.Identifier {
 	if id, ok := s.ids[goID]; ok {
 		return id
 	}
