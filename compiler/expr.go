@@ -256,14 +256,14 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 		switch c.ObjectOf(fun) {
 		case builtin.make:
 			typ := expr.Args[0]
-			switch t := typ.(type) {
-			case *ast.ArrayType:
+			switch t := c.TypeOf(typ).Underlying().(type) {
+			case *types.Slice:
 				length := expr.Args[1]
 				// This is a list comprehension rather than [<nil value>] * length
 				// because in the case when T is not a primitive type,
 				// every element in the list needs to be a different object.
 				return &py.ListComp{
-					Elt: c.zeroValue(c.TypeOf(t.Elt)),
+					Elt: c.zeroValue(t.Elem()),
 					Generators: []py.Comprehension{
 						py.Comprehension{
 							Target: &py.Name{Id: py.Identifier("_")},
@@ -274,10 +274,10 @@ func (c *exprCompiler) compileCallExpr(expr *ast.CallExpr) py.Expr {
 						},
 					},
 				}
-			case *ast.MapType:
+			case *types.Map:
 				return &py.Dict{}
 			default:
-				panic(c.err(expr, "bad type in make(): %T", typ))
+				panic(c.err(expr, "bad type in make(): %T", t))
 			}
 		case builtin.new:
 			typ := expr.Args[0]

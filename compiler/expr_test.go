@@ -23,6 +23,7 @@ var (
 )
 
 type U struct{}
+type IntSlice []int
 
 var (
 	b0, b1 bool
@@ -236,6 +237,15 @@ var exprTests = []struct {
 	// Built-in functions
 	{"make([]T, x)", &py.ListComp{
 		Elt: &py.Call{Func: T},
+		Generators: []py.Comprehension{
+			py.Comprehension{
+				Target: &py.Name{Id: py.Identifier("_")},
+				Iter: &py.Call{
+					Func: pyRange,
+					Args: []py.Expr{x}},
+			}}}},
+	{"make(IntSlice, x)", &py.ListComp{
+		Elt: zero,
 		Generators: []py.Comprehension{
 			py.Comprehension{
 				Target: &py.Name{Id: py.Identifier("_")},
