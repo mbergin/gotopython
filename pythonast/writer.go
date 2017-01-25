@@ -192,10 +192,34 @@ func (w *Writer) try(s *Try) {
 
 func (w *Writer) augAssign(s *AugAssign) {
 	w.WriteExpr(s.Target)
-	w.write(" ")
-	w.writeOp(s.Op)
-	w.write("=")
-	w.write(" ")
+	switch s.Op {
+	case Add:
+		w.write(" += ")
+	case Sub:
+		w.write(" -= ")
+	case Mult:
+		w.write(" *= ")
+	case MatMult:
+		w.write(" @= ")
+	case Div:
+		w.write(" /= ")
+	case Mod:
+		w.write(" %= ")
+	case Pow:
+		w.write(" **= ")
+	case LShift:
+		w.write(" <<= ")
+	case RShift:
+		w.write(" >>= ")
+	case BitOr:
+		w.write(" |= ")
+	case BitXor:
+		w.write(" ^= ")
+	case BitAnd:
+		w.write(" &= ")
+	case FloorDiv:
+		w.write(" //= ")
+	}
 	w.WriteExpr(s.Value)
 }
 
