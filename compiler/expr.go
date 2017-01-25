@@ -389,8 +389,45 @@ func (c *exprCompiler) compileExpr(expr ast.Expr) py.Expr {
 		return c.compileTypeAssertExpr(e)
 	case *ast.StarExpr:
 		return c.compileStarExpr(e)
+	case *ast.ArrayType, *ast.ChanType, *ast.FuncType, *ast.InterfaceType, *ast.MapType, *ast.StructType:
+		return c.compileType(c.TypeOf(e))
 	}
 	panic(c.err(expr, "unknown Expr: %T", expr))
+}
+
+func (c *exprCompiler) compileType(typ types.Type) py.Expr {
+	var pyExpr py.Expr
+	switch t := typ.(type) {
+	case *types.Array:
+		pyExpr = &py.Call{
+			Func: &py.Attribute{
+				Value: runtimeModule,
+				Attr:  py.Identifier("arrayType"),
+			},
+			Args: []py.Expr{
+				c.compileType(t.Elem()),
+				&py.Num{N: fmt.Sprintf("%d", t.Len())},
+			},
+		}
+	case *types.Slice:
+		pyExpr = &py.Call{
+			Func: &py.Attribute{
+				Value: runtimeModule,
+				Attr:  py.Identifier("sliceType"),
+			},
+			Args: []py.Expr{
+				c.compileType(t.Elem()),
+			},
+		}
+	case *types.Basic:
+		pyExpr = &py.Attribute{
+			Value: runtimeModule,
+			Attr:  py.Identifier(types.TypeString(t, nil)),
+		}
+	default:
+		panic(fmt.Sprintf("%T", t))
+	}
+	return pyExpr
 }
 
 func (c *exprCompiler) compileExprs(exprs []ast.Expr) []py.Expr {

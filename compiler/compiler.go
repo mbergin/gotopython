@@ -247,6 +247,9 @@ func (c *Compiler) compileTypeSpec(spec *ast.TypeSpec) py.Stmt {
 		}
 	case *types.Interface:
 		return c.compileInterfaceType(spec.Name, t)
+	case *types.Basic, *types.Slice:
+		fields := []*types.Var{types.NewField(token.NoPos, nil, "value", t, false)}
+		return c.compileStructType(spec.Name, types.NewStruct(fields, nil))
 	default:
 		panic(c.err(spec, "unknown TypeSpec: %T", t))
 	}

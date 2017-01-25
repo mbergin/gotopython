@@ -430,6 +430,9 @@ func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 	case *ast.DeferStmt:
 		// TODO
 		pyStmts = []py.Stmt{}
+	case *ast.LabeledStmt:
+		// TODO labels
+		pyStmts = c.compileStmt(s.Stmt)
 	default:
 		panic(c.err(stmt, "unknown Stmt: %T", stmt))
 	}
