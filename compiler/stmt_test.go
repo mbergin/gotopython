@@ -197,6 +197,12 @@ var stmtTests = []struct {
 			Body: s(x),
 		},
 	}},
+	{"for b0 {}", []py.Stmt{
+		&py.While{
+			Test: b0,
+			Body: []py.Stmt{&py.Pass{}},
+		},
+	}},
 	{"for s(0); b0; s(1) {s(2)}",
 		append(s(0),
 			&py.While{

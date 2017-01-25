@@ -342,6 +342,11 @@ func (c *Compiler) compileForStmt(s *ast.ForStmt) []py.Stmt {
 	if s.Cond != nil {
 		test = e.compileExpr(s.Cond)
 	}
+
+	if len(body) == 0 {
+		body = []py.Stmt{&py.Pass{}}
+	}
+
 	stmts = append(stmts, e.stmts...)
 	stmts = append(stmts, &py.While{Test: test, Body: body})
 	return stmts
