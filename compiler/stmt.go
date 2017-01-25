@@ -23,6 +23,10 @@ func (c *Compiler) isBlank(expr ast.Expr) bool {
 
 func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) []py.Stmt {
 	e := c.exprCompiler()
+	body := c.compileStmt(stmt.Body)
+	if len(body) == 0 {
+		body = []py.Stmt{&py.Pass{}}
+	}
 	var pyStmt py.Stmt
 	if stmt.Key != nil && stmt.Value == nil {
 		pyStmt = &py.For{
@@ -35,7 +39,7 @@ func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) []py.Stmt {
 						Args: []py.Expr{e.compileExpr(stmt.X)},
 					},
 				}},
-			Body: c.compileStmt(stmt.Body),
+			Body: body,
 		}
 
 	} else if stmt.Key != nil && stmt.Value != nil {
@@ -43,7 +47,7 @@ func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) []py.Stmt {
 			pyStmt = &py.For{
 				Target: e.compileExpr(stmt.Value),
 				Iter:   e.compileExpr(stmt.X),
-				Body:   c.compileStmt(stmt.Body),
+				Body:   body,
 			}
 
 		} else {
@@ -53,12 +57,18 @@ func (c *Compiler) compileRangeStmt(stmt *ast.RangeStmt) []py.Stmt {
 					Func: pyEnumerate,
 					Args: []py.Expr{e.compileExpr(stmt.X)},
 				},
-				Body: c.compileStmt(stmt.Body),
+				Body: body,
 			}
 		}
 
+	} else if stmt.Key == nil && stmt.Value == nil {
+		pyStmt = &py.For{
+			Target: &py.Name{Id: py.Identifier("_")},
+			Iter:   e.compileExpr(stmt.X),
+			Body:   body,
+		}
 	} else {
-		panic(c.err(stmt, "nil key in range for"))
+		panic(c.err(stmt, "key == nil and value != nil in range for"))
 	}
 	return append(e.stmts, pyStmt)
 }

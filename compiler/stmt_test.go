@@ -183,6 +183,13 @@ var stmtTests = []struct {
 			Body:   s(x),
 		},
 	}},
+	{"for range xs {}", []py.Stmt{
+		&py.For{
+			Target: &py.Name{Id: py.Identifier("_")},
+			Iter:   xs,
+			Body:   []py.Stmt{&py.Pass{}},
+		},
+	}},
 
 	// For statement
 	{"for {s(0)}", []py.Stmt{
