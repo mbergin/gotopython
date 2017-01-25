@@ -131,6 +131,7 @@ func (w *Writer) ifStmt(s *If) {
 	w.writeStmts(s.Body)
 	w.dedent()
 	if s.Orelse != nil {
+		w.newline()
 		if elif, ok := s.Orelse[0].(*If); ok {
 			w.write("el")
 			w.writeStmt(elif)
@@ -165,6 +166,7 @@ func (w *Writer) try(s *Try) {
 	w.writeStmts(s.Body)
 	w.dedent()
 	for _, handler := range s.Handlers {
+		w.newline()
 		w.write("except")
 		if handler.Typ != nil {
 			w.write(" ")
@@ -180,6 +182,7 @@ func (w *Writer) try(s *Try) {
 		w.dedent()
 	}
 	if len(s.Orelse) > 0 {
+		w.newline()
 		w.write("else:")
 		w.indent()
 		w.writeStmts(s.Orelse)
@@ -386,48 +389,48 @@ func (w *Writer) WriteExpr(expr Expr) {
 func (w *Writer) writeOp(op Operator) {
 	switch op {
 	case Add:
-		w.write("+")
+		w.write(" + ")
 	case Sub:
-		w.write("-")
+		w.write(" - ")
 	case Mult:
-		w.write("*")
+		w.write(" * ")
 	case MatMult:
-		w.write("@")
+		w.write(" @ ")
 	case Div:
-		w.write("/")
+		w.write(" / ")
 	case Mod:
-		w.write("%")
+		w.write(" % ")
 	case Pow:
-		w.write("**")
+		w.write(" ** ")
 	case LShift:
-		w.write("<<")
+		w.write(" << ")
 	case RShift:
-		w.write(">>")
+		w.write(" >> ")
 	case BitOr:
-		w.write("|")
+		w.write(" | ")
 	case BitXor:
-		w.write("^")
+		w.write(" ^ ")
 	case BitAnd:
-		w.write("&")
+		w.write(" & ")
 	case FloorDiv:
-		w.write("//")
+		w.write(" // ")
 	}
 }
 
 func (w *Writer) writeCmpOp(op CmpOp) {
 	switch op {
 	case Eq:
-		w.write("==")
+		w.write(" == ")
 	case NotEq:
-		w.write("!=")
+		w.write(" != ")
 	case Lt:
-		w.write("<")
+		w.write(" < ")
 	case LtE:
-		w.write("<=")
+		w.write(" <= ")
 	case Gt:
-		w.write(">")
+		w.write(" > ")
 	case GtE:
-		w.write(">=")
+		w.write(" >= ")
 	case Is:
 		w.write(" is ")
 	case IsNot:
@@ -440,6 +443,7 @@ func (w *Writer) writeCmpOp(op CmpOp) {
 }
 
 func (w *Writer) functionDef(s *FunctionDef) {
+	w.newline()
 	w.write("def ")
 	w.identifier(s.Name)
 	w.beginParen()
@@ -467,6 +471,7 @@ func (w *Writer) functionDef(s *FunctionDef) {
 }
 
 func (w *Writer) classDef(s *ClassDef) {
+	w.newline()
 	w.write("class ")
 	w.identifier(s.Name)
 	if len(s.Bases) > 0 {
@@ -520,7 +525,6 @@ func (w *Writer) newline() {
 
 func (w *Writer) dedent() {
 	w.indentLevel--
-	w.newline()
 }
 
 func (w *Writer) write(s string) {
