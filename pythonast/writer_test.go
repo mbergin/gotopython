@@ -44,6 +44,10 @@ func lambda(args Arguments, body Expr) Expr {
 	return &Lambda{Args: args, Body: body}
 }
 
+func star(e Expr) Expr {
+	return &Starred{Value: e}
+}
+
 func TestExpr(t *testing.T) {
 	tests := []struct {
 		expr Expr
@@ -71,6 +75,7 @@ func TestExpr(t *testing.T) {
 		{tup(a, eq(b, c), d), "a, b == c, d"},
 		{tup(lambda(args(a), b), c), "lambda a: b, c"},
 		{lambda(args(a), tup(b, c)), "lambda a: (b, c)"},
+		{call(a, star(b)), "a(*b)"},
 	}
 	for _, test := range tests {
 		t.Run(test.want, func(t *testing.T) {

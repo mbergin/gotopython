@@ -229,7 +229,7 @@ func (NameConstant) Precedence() int   { return 100 }
 func (Ellipsis) Precedence() int       { return 0 }
 func (ConstantExpr) Precedence() int   { return 100 }
 
-func (Starred) Precedence() int { return 0 }
+func (Starred) Precedence() int { return 100 }
 func (Name) Precedence() int    { return 100 }
 
 type BoolOpExpr struct {
