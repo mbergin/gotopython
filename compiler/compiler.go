@@ -26,6 +26,7 @@ type Compiler struct {
 	*scope
 	*token.FileSet
 	commentMap *ast.CommentMap
+	defers     py.Expr
 }
 
 func NewCompiler(typeInfo *types.Info, fileSet *token.FileSet) *Compiler {
@@ -80,10 +81,44 @@ type FuncDecl struct {
 	Def   *py.FunctionDef
 }
 
+func (c *Compiler) addDefers(body *ast.BlockStmt) py.Stmt {
+	hasDefer := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		// Break early if a defer was found
+		if hasDefer {
+			return false
+		}
+		switch node.(type) {
+		case *ast.DeferStmt:
+			c.defers = &py.Name{Id: c.tempID("defers")}
+			hasDefer = true
+			return false
+		case ast.Stmt:
+			// Recurse into if, for, etc
+			return true
+		}
+		// Do not recurse into expressions e.g. function literals
+		return false
+	})
+	if hasDefer {
+		return &py.Assign{
+			Targets: []py.Expr{c.defers},
+			Value:   &py.List{},
+		}
+	}
+	return nil
+}
+
 func (parent *Compiler) compileFunc(name py.Identifier, typ *ast.FuncType, body *ast.BlockStmt, isMethod bool, recv *ast.Ident) *py.FunctionDef {
 	pyArgs := py.Arguments{}
 	// Compiler with nested function scope
 	c := parent.nestedCompiler()
+
+	var pyBody []py.Stmt
+
+	// add an empty list of defer functions before the function body if this function uses defer
+	deferInit := c.addDefers(body)
+
 	if isMethod {
 		var recvId py.Identifier
 		if recv != nil {
@@ -98,10 +133,33 @@ func (parent *Compiler) compileFunc(name py.Identifier, typ *ast.FuncType, body 
 			pyArgs.Args = append(pyArgs.Args, py.Arg{Arg: c.identifier(name)})
 		}
 	}
-	var pyBody []py.Stmt
+
 	for _, stmt := range body.List {
 		pyBody = append(pyBody, c.compileStmt(stmt)...)
 	}
+
+	// Execute defers
+	if deferInit != nil {
+		fun := &py.Name{Id: c.tempID("fun")}
+		args := &py.Name{Id: c.tempID("args")}
+		forLoop := &py.For{
+			Target: makeTuple(fun, args),
+			Iter:   &py.Call{Func: pyReversed, Args: []py.Expr{c.defers}},
+			Body: []py.Stmt{
+				&py.ExprStmt{
+					Value: &py.Call{Func: fun, Args: []py.Expr{&py.Starred{Value: args}}},
+				},
+			},
+		}
+		pyBody = []py.Stmt{
+			deferInit,
+			&py.Try{
+				Body:      pyBody,
+				Finalbody: []py.Stmt{forLoop},
+			},
+		}
+	}
+
 	if len(pyBody) == 0 {
 		pyBody = []py.Stmt{&py.Pass{}}
 	}

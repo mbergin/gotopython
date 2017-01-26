@@ -189,6 +189,31 @@ var funcDeclTests = []struct {
 			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: x},
 		},
 	}}},
+
+	// Defer
+	{"func f() { x := 1; defer ignore(x); _ = x }", FuncDecl{noClass, &py.FunctionDef{
+		Name: f,
+		Body: []py.Stmt{
+			&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("defers")}}, Value: &py.List{}},
+			&py.Try{
+				Body: []py.Stmt{
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("x")}}, Value: one},
+					&py.ExprStmt{&py.Call{
+						Func: &py.Attribute{Value: &py.Name{Id: py.Identifier("defers")}, Attr: py.Identifier("append")},
+						Args: []py.Expr{&py.Tuple{Elts: []py.Expr{&py.Name{Id: py.Identifier("ignore")}, &py.Tuple{Elts: []py.Expr{&py.Name{Id: py.Identifier("x")}}}}}},
+					}},
+					&py.Assign{Targets: []py.Expr{&py.Name{Id: py.Identifier("_")}}, Value: &py.Name{Id: py.Identifier("x")}},
+				},
+				Finalbody: []py.Stmt{
+					&py.For{
+						Target: &py.Tuple{Elts: []py.Expr{&py.Name{Id: "fun"}, &py.Name{Id: "args"}}},
+						Iter:   &py.Call{Func: pyReversed, Args: []py.Expr{&py.Name{Id: py.Identifier("defers")}}},
+						Body:   []py.Stmt{&py.ExprStmt{&py.Call{Func: &py.Name{Id: "fun"}, Args: []py.Expr{&py.Starred{Value: &py.Name{Id: "args"}}}}}},
+					},
+				},
+			},
+		},
+	}}},
 }
 
 func TestFuncDecl(t *testing.T) {

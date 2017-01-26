@@ -51,7 +51,7 @@ The parts of the Go language spec that are implemented are:
 | IncDecStmt     | `x++`                       | ✓           |
 | AssignStmt     | `x, y := z`                 | ✓           |
 | GoStmt         | `go f()`                    |             |
-| DeferStmt      | `defer f()`                 |             |
+| DeferStmt      | `defer f()`                 | ✓           |
 | ReturnStmt     | `return x, y`               | 1           |
 | BranchStmt     | `break`                     | ✓           |
 | BlockStmt      | `{...}`                     | ✓           |

@@ -119,7 +119,7 @@ func (c *Compiler) compileValueSpec(spec *ast.ValueSpec) []py.Stmt {
 	}
 	stmt := &py.Assign{
 		Targets: targets,
-		Value:   makeTuple(values),
+		Value:   makeTuple(values...),
 	}
 	return append(e.stmts, stmt)
 }
@@ -413,6 +413,27 @@ func (c *Compiler) compileExprStmt(s *ast.ExprStmt) []py.Stmt {
 	return append(e.stmts, stmt)
 }
 
+func appendToList(list py.Expr, item py.Expr) py.Stmt {
+	return &py.ExprStmt{
+		Value: &py.Call{
+			Func: &py.Attribute{
+				Value: list,
+				Attr:  py.Identifier("append"),
+			},
+			Args: []py.Expr{
+				item,
+			},
+		},
+	}
+}
+
+func (c *Compiler) compileDeferStmt(s *ast.DeferStmt) []py.Stmt {
+	e := c.exprCompiler()
+	f := e.compileExpr(s.Call.Fun)
+	args := &py.Tuple{Elts: e.compileExprs(s.Call.Args)}
+	return append(e.stmts, appendToList(c.defers, makeTuple(f, args)))
+}
+
 func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 	var pyStmts []py.Stmt
 	switch s := stmt.(type) {
@@ -443,8 +464,7 @@ func (c *Compiler) compileStmt(stmt ast.Stmt) []py.Stmt {
 	case *ast.EmptyStmt:
 		pyStmts = []py.Stmt{}
 	case *ast.DeferStmt:
-		// TODO
-		pyStmts = []py.Stmt{}
+		pyStmts = c.compileDeferStmt(s)
 	case *ast.LabeledStmt:
 		// TODO labels
 		pyStmts = c.compileStmt(s.Stmt)

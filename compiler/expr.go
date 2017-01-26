@@ -438,7 +438,7 @@ func (c *exprCompiler) compileExprs(exprs []ast.Expr) []py.Expr {
 	return pyExprs
 }
 
-func makeTuple(pyExprs []py.Expr) py.Expr {
+func makeTuple(pyExprs ...py.Expr) py.Expr {
 	switch len(pyExprs) {
 	case 0:
 		return nil
@@ -450,7 +450,7 @@ func makeTuple(pyExprs []py.Expr) py.Expr {
 }
 
 func (c *exprCompiler) compileExprsTuple(exprs []ast.Expr) py.Expr {
-	return makeTuple(c.compileExprs(exprs))
+	return makeTuple(c.compileExprs(exprs)...)
 }
 
 func (c *exprCompiler) compileCaseClauseTest(caseClause *ast.CaseClause, tag py.Expr) py.Expr {

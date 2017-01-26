@@ -13,4 +13,5 @@ var (
 	pyType        = &py.Name{Id: py.Identifier("type")}
 	pyKeyError    = &py.Name{Id: py.Identifier("KeyError")}
 	pyComplex     = &py.Name{Id: py.Identifier("complex")}
+	pyReversed    = &py.Name{Id: py.Identifier("reversed")}
 )
