@@ -210,7 +210,7 @@ func (Attribute) Precedence() int { return 16 }
 func (Dict) Precedence() int  { return 17 }
 func (Set) Precedence() int   { return 17 }
 func (List) Precedence() int  { return 17 }
-func (Tuple) Precedence() int { return 17 }
+func (Tuple) Precedence() int { return 0 }
 
 func (ListComp) Precedence() int     { return 17 }
 func (SetComp) Precedence() int      { return 17 }

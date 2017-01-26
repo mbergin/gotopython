@@ -188,6 +188,13 @@ func (w *Writer) try(s *Try) {
 		w.writeStmts(s.Orelse)
 		w.dedent()
 	}
+	if len(s.Finalbody) > 0 {
+		w.newline()
+		w.write("finally:")
+		w.indent()
+		w.writeStmts(s.Finalbody)
+		w.dedent()
+	}
 }
 
 func (w *Writer) augAssign(s *AugAssign) {
@@ -247,6 +254,49 @@ func (w *Writer) call(e *Call) {
 	w.endParen()
 }
 
+func (w *Writer) binOp(e *BinOp) {
+	prec := e.Precedence()
+	if prec == e.Left.Precedence() && e.Op == Pow {
+		w.beginParen()
+	}
+	w.writeExprPrec(e.Left, prec)
+	if prec == e.Left.Precedence() && e.Op == Pow {
+		w.endParen()
+	}
+	w.writeOp(e.Op)
+	if prec == e.Right.Precedence() && e.Op != Pow {
+		w.beginParen()
+	}
+	w.writeExprPrec(e.Right, prec)
+	if prec == e.Right.Precedence() && e.Op != Pow {
+		w.endParen()
+	}
+}
+
+func (w *Writer) tuple(e *Tuple, parentPrec int) {
+	prec := e.Precedence()
+	paren := prec < parentPrec
+	if !paren && len(e.Elts) == 0 {
+		w.beginParen()
+	}
+	for i, elt := range e.Elts {
+		if i > 0 {
+			w.comma()
+		}
+		w.writeExprPrec(elt, 1)
+	}
+	if len(e.Elts) == 1 {
+		w.write(",")
+	}
+	if !paren && len(e.Elts) == 0 {
+		w.endParen()
+	}
+}
+
+func (w *Writer) WriteExpr(expr Expr) {
+	w.writeExprPrec(expr, 0)
+}
+
 func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 	if expr == nil {
 		panic("nil expr")
@@ -258,9 +308,7 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 	}
 	switch e := expr.(type) {
 	case *BinOp:
-		w.writeExprPrec(e.Left, prec)
-		w.writeOp(e.Op)
-		w.writeExprPrec(e.Right, prec)
+		w.binOp(e)
 	case *Name:
 		w.identifier(e.Id)
 	case *Num:
@@ -274,12 +322,7 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 			w.writeExprPrec(e.Comparators[i], prec)
 		}
 	case *Tuple:
-		for i, elt := range e.Elts {
-			if i > 0 {
-				w.comma()
-			}
-			w.writeExprPrec(elt, prec)
-		}
+		w.tuple(e, parentPrec)
 	case *Call:
 		w.call(e)
 	case *Attribute:
@@ -303,12 +346,28 @@ func (w *Writer) writeExprPrec(expr Expr, parentPrec int) {
 		w.unaryOpExpr(e)
 	case *ListComp:
 		w.listComp(e)
+	case *Starred:
+		w.starred(e)
+	case *Lambda:
+		w.lambda(e)
 	default:
 		panic(fmt.Sprintf("unknown Expr: %T", expr))
 	}
 	if paren {
 		w.endParen()
 	}
+}
+
+func (w *Writer) lambda(e *Lambda) {
+	w.write("lambda ")
+	w.args(e.Args)
+	w.write(": ")
+	w.writeExprPrec(e.Body, e.Precedence())
+}
+
+func (w *Writer) starred(e *Starred) {
+	w.write("*")
+	w.writeExprPrec(e.Value, e.Precedence())
 }
 
 func (w *Writer) listComp(e *ListComp) {
@@ -406,10 +465,6 @@ func (w *Writer) nameConstant(nc *NameConstant) {
 	}
 }
 
-func (w *Writer) WriteExpr(expr Expr) {
-	w.writeExprPrec(expr, 0)
-}
-
 func (w *Writer) writeOp(op Operator) {
 	switch op {
 	case Add:
@@ -466,22 +521,26 @@ func (w *Writer) writeCmpOp(op CmpOp) {
 	}
 }
 
-func (w *Writer) functionDef(s *FunctionDef) {
-	w.newline()
-	w.write("def ")
-	w.identifier(s.Name)
-	w.beginParen()
-	defaultOffset := len(s.Args.Args) - len(s.Args.Defaults)
-	for i, arg := range s.Args.Args {
+func (w *Writer) args(args Arguments) {
+	defaultOffset := len(args.Args) - len(args.Defaults)
+	for i, arg := range args.Args {
 		if i > 0 {
 			w.comma()
 		}
 		w.identifier(arg.Arg)
 		if i >= defaultOffset {
 			w.write("=")
-			w.WriteExpr(s.Args.Defaults[i-defaultOffset])
+			w.WriteExpr(args.Defaults[i-defaultOffset])
 		}
 	}
+}
+
+func (w *Writer) functionDef(s *FunctionDef) {
+	w.newline()
+	w.write("def ")
+	w.identifier(s.Name)
+	w.beginParen()
+	w.args(s.Args)
 	w.endParen()
 	w.write(":")
 	w.indent()
