@@ -116,3 +116,4 @@ The parts of the Go language spec that are implemented are:
 * [GopherJS](https://github.com/gopherjs/gopherjs)
 * [go-spew](https://github.com/davecgh/go-spew)
 * [The Go Programming Language Specification](https://golang.org/ref/spec)
+* [Taming Control Flow: A Structured Approach to Eliminating Goto Statements](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.42.1485&rep=rep1&type=pdf)
